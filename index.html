@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoLook MVP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        #camera-feed {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: #eee; /* Placeholder background */
+        }
+        #captured-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none; /* Initially hidden */
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #feedback {
+            margin-top: 20px;
+            font-style: italic;
+            color: #555;
+        }
+        #results {
+            margin-top: 30px;
+            text-align: left;
+        }
+        #results h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #results ul {
+            list-style: none;
+            padding: 0;
+        }
+        #results li {
+            background-color: #e9e9e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EcoLook MVP</h1>
+        <video id="camera-feed" autoplay playsinline></video>
+        <img id="captured-image" alt="Foto da roupa capturada">
+        <button id="capture-btn">Escanear Roupa</button>
+
+        <div id="feedback"></div>
+
+        <div id="results" style="display: none;">
+            <h3>Alternativa Sustentável Sugerida:</h3>
+            <p id="sustainable-suggestion"></p>
+            <h3>Lojas Próximas:</h3>
+            <ul id="nearby-stores-list">
+                </ul>
+        </div>
+    </div>
+
+    <script>
+        const cameraFeed = document.getElementById('camera-feed');
+        const capturedImage = document.getElementById('captured-image');
+        const captureBtn = document.getElementById('capture-btn');
+        const feedbackDiv = document.getElementById('feedback');
+        const resultsDiv = document.getElementById('results');
+        const sustainableSuggestionP = document.getElementById('sustainable-suggestion');
+        const nearbyStoresListUl = document.getElementById('nearby-stores-list');
+        let currentStream;
+
+        // Função para iniciar a câmera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                cameraFeed.srcObject = stream;
+                currentStream = stream;
+                cameraFeed.style.display = 'block';
+                capturedImage.style.display = 'none';
+                feedbackDiv.textContent = 'Posicione a roupa na frente da câmera.';
+                resultsDiv.style.display = 'none';
+            } catch (err) {
+                console.error("Erro ao acessar a câmera:", err);
+                feedbackDiv.textContent = 'Erro ao acessar a câmera. Verifique as permissões.';
+            }
+        }
+
+        // Função para parar a câmera
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // Event listener para o botão de captura
+        captureBtn.addEventListener('click', async () => {
+            if (!currentStream) {
+                feedbackDiv.textContent = 'A câmera não está ativa.';
+                return;
+            }
+
+            // Parar a câmera e capturar a imagem
+            stopCamera();
+            const canvas = document.createElement('canvas');
+            canvas.width = cameraFeed.videoWidth;
+            canvas.height = cameraFeed.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
+            const imageDataUrl = canvas.toDataURL('image/png');
+
+            // Exibir a imagem capturada
+            capturedImage.src = imageDataUrl;
+            capturedImage.style.display = 'block';
+            cameraFeed.style.display = 'none';
+
+            feedbackDiv.textContent = 'Analisando sua roupa...';
+            resultsDiv.style.display = 'none';
+            nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+
+            // --- Integração com Gemini Vision (Placeholder) ---
+            const identifiedClothing = await analyzeImageWithGemini(imageDataUrl);
+            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugerindo alternativas sustentáveis...`;
+
+            // --- Sugestão Sustentável (Placeholder) ---
+            const sustainableSuggestion = suggestSustainableAlternative(identifiedClothing);
+            sustainableSuggestionP.textContent = sustainableSuggestion;
+
+            feedbackDiv.textContent += ' Buscando lojas próximas...';
+
+            // --- Integração com Google Maps (Placeholder) ---
+            // Em um app real, você obteria a localização do usuário aqui
+            const userLocation = { lat: -22.2572, lng: -42.5322 }; // Exemplo: Nova Friburgo, RJ
+            const nearbyStores = await searchNearbyStores(identifiedClothing, userLocation);
+
+            // Exibir resultados
+            feedbackDiv.textContent = 'Resultados encontrados:';
+            resultsDiv.style.display = 'block';
+            displayNearbyStores(nearbyStores);
+
+            // Reiniciar a câmera após um tempo ou com outro botão
+            // setTimeout(startCamera, 5000); // Exemplo: reiniciar após 5 segundos
+        });
+
+        // --- Funções Placeholder para Integração com APIs ---
+
+        // Função placeholder para analisar imagem com Gemini Vision
+        async function analyzeImageWithGemini(imageDataUrl) {
+            // Aqui seria a chamada real para a API do Gemini Vision
+            // Enviando a imageDataUrl para análise
+            console.log("Chamando Gemini Vision com imagem...");
+            // Simulação de resposta da API
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Simula delay da API
+            const mockResults = ["camiseta azul", "calça jeans", "vestido estampado"];
+            const randomIndex = Math.floor(Math.random() * mockResults.length);
+            return mockResults[randomIndex]; // Retorna um tipo de peça aleatório para demonstração
+        }
+
+        // Função placeholder para sugerir alternativa sustentável
+        function suggestSustainableAlternative(clothingType) {
+            // Lógica simples para sugerir alternativas baseadas no tipo de peça
+            if (clothingType.includes("camiseta")) {
+                return "Considere camisetas de algodão orgânico ou reciclado.";
+            } else if (clothingType.includes("calça jeans")) {
+                return "Procure por jeans reciclados ou de algodão com menor uso de água.";
+            } else if (clothingType.includes("vestido")) {
+                return "Alternativas incluem vestidos de linho, cânhamo ou materiais reciclados.";
+            } else {
+                return "Busque por opções feitas com materiais sustentáveis ou de segunda mão.";
+            }
+        }
+
+        // Função placeholder para buscar lojas próximas com Google Maps
+        async function searchNearbyStores(clothingType, location) {
+            // Aqui seria a chamada real para a API do Google Maps Places
+            // Formatando a query de busca com base no tipo de roupa e localização
+            const query = `lojas de roupa sustentável ou brechó perto de mim`; // Query genérica para MVP
+            console.log(`Chamando Google Maps com query: "${query}" e localização:`, location);
+            // Simulação de resposta da API
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Simula delay da API
+            const mockStores = [
+                { name: "Brechó da Esquina", address: "Rua A, 123", distance: "500m" },
+                { name: "Loja Sustentável Verde", address: "Av. B, 456", distance: "1.2km" },
+                { name: "Second Hand Fashion", address: "Centro Comercial, Loja 7", distance: "2.5km" }
+            ];
+            return mockStores; // Retorna lista de lojas mock para demonstração
+        }
+
+        // Função para exibir a lista de lojas
+        function displayNearbyStores(stores) {
+            if (stores.length === 0) {
+                nearbyStoresListUl.innerHTML = '<li>Nenhuma loja sustentável ou brechó encontrado próximo.</li>';
+                return;
+            }
+            stores.forEach(store => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${store.name}</strong><br>${store.address}<br>(${store.distance})`;
+                nearbyStoresListUl.appendChild(li);
+            });
+        }
+
+        // Iniciar a câmera ao carregar a página
+        window.onload = startCamera;
+
+        // Gerenciamento de Chaves de API (Nota: Em produção, use um backend)
+        // const GEMINI_API_KEY = 'SUA_CHAVE_GEMINI'; // Use variáveis de ambiente ou um backend
+        // const GOOGLE_MAPS_API_KEY = 'SUA_CHAVE_GOOGLE_MAPS'; // Use variáveis de ambiente ou um backend
+
+    </script>
+</body>
+</html>
