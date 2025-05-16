@@ -160,74 +160,126 @@
             resultsDiv.style.display = 'none';
             nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
 
-            // --- Integração com Gemini Vision (Placeholder) ---
-            // Passando a chave da API para a função (ainda placeholder)
+            // --- Integração com Gemini Vision ---
+            // Passando a chave da API para a função (ainda placeholder com exemplo real comentado)
             const identifiedClothing = await analyzeImageWithGemini(imageDataUrl, GOOGLE_API_KEY);
             feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugerindo alternativas sustentáveis...`;
 
-            // --- Sugestão Sustentável (Placeholder) ---
+            // --- Sugestão Sustentável ---
             const sustainableSuggestion = suggestSustainableAlternative(identifiedClothing);
             sustainableSuggestionP.textContent = sustainableSuggestion;
 
             feedbackDiv.textContent += ' Buscando lojas próximas...';
 
-            // --- Integração com Google Maps (Placeholder) ---
+            // --- Integração com Google Maps ---
             // Em um app real, você obteria a localização do usuário aqui
-            // Passando a chave da API para a função (ainda placeholder)
+            // Passando a chave da API para a função (ainda placeholder com exemplo real comentado)
+            // Para obter a localização real no navegador:
+            /*
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    const nearbyStores = await searchNearbyStores(identifiedClothing, userLocation, GOOGLE_API_KEY);
+                    feedbackDiv.textContent = 'Resultados encontrados:';
+                    resultsDiv.style.display = 'block';
+                    displayNearbyStores(nearbyStores);
+                }, (error) => {
+                    console.error("Erro ao obter localização:", error);
+                    feedbackDiv.textContent = 'Erro ao obter sua localização para buscar lojas próximas.';
+                    // Exibir resultados mock ou mensagem de erro
+                    resultsDiv.style.display = 'block';
+                    nearbyStoresListUl.innerHTML = '<li>Não foi possível obter sua localização para buscar lojas próximas.</li>';
+                });
+            } else {
+                feedbackDiv.textContent = 'Geolocalização não suportada neste navegador.';
+                 resultsDiv.style.display = 'block';
+                 nearbyStoresListUl.innerHTML = '<li>Geolocalização não suportada neste navegador.</li>';
+            }
+            */
+            // Usando localização mock para o MVP
             const userLocation = { lat: -22.2572, lng: -42.5322 }; // Exemplo: Nova Friburgo, RJ
             const nearbyStores = await searchNearbyStores(identifiedClothing, userLocation, GOOGLE_API_KEY);
 
-            // Exibir resultados
+            // Exibir resultados (para o fluxo mock)
             feedbackDiv.textContent = 'Resultados encontrados:';
             resultsDiv.style.display = 'block';
             displayNearbyStores(nearbyStores);
+
 
             // Reiniciar a câmera após um tempo ou com outro botão
             // setTimeout(startCamera, 5000); // Exemplo: reiniciar após 5 segundos
         });
 
-        // --- Funções Placeholder para Integração com APIs ---
+        // --- Funções para Integração com APIs (Exemplos Comentados) ---
 
-        // Função placeholder para analisar imagem com Gemini Vision
-        // Agora aceita a chave da API, mas ainda usa dados mock
+        // Função para analisar imagem com Gemini Vision
+        // ATENÇÃO: Implementação real requer tratamento de resposta e erros.
+        // Para produção, esta chamada deve ser feita por um BACKEND SEGURO.
         async function analyzeImageWithGemini(imageDataUrl, apiKey) {
-            // Aqui seria a chamada real para a API do Gemini Vision
-            // Exemplo (requer configuração e tratamento de resposta da API):
+            console.log("Chamando Gemini Vision com imagem e chave API (exemplo comentado)...");
+            // console.log("API Key (placeholder):", apiKey); // Evite logar chaves em código real
+
+            // Exemplo de chamada real para a API do Gemini Vision (requer configuração e tratamento de resposta da API):
             /*
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                { text: "Descreva a peça de roupa nesta imagem:" },
-                                { inline_data: { mime_type: 'image/png', data: imageDataUrl.split(',')[1] } }
-                            ]
-                        }
-                    ]
-                })
-            });
-            const data = await response.json();
-            // Processar a resposta para extrair o tipo de peça
-            console.log("Resposta Gemini Vision (mock):", data);
-            return data.candidates[0].content.parts[0].text; // Exemplo de como extrair, ajuste conforme a resposta real
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${'gemini-pro-vision'}:generateContent?key=${apiKey}`; // Use o modelo do seu .env se aplicável
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                parts: [
+                                    { text: "Descreva a peça de roupa nesta imagem em poucas palavras, focando no tipo e cor principal. Ex: 'camiseta azul', 'calça jeans preta'." },
+                                    { inline_data: { mime_type: 'image/png', data: imageDataUrl.split(',')[1] } } // Extrai base64 da URL
+                                ]
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("Erro na API Gemini Vision:", response.status, errorData);
+                    return "Não foi possível analisar a roupa."; // Retorna mensagem de erro
+                }
+
+                const data = await response.json();
+                console.log("Resposta Gemini Vision:", data);
+
+                // Processar a resposta para extrair o tipo de peça
+                // A estrutura da resposta pode variar, ajuste conforme necessário
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+                     return data.candidates[0].content.parts[0].text.trim();
+                } else {
+                     console.warn("Resposta inesperada da API Gemini Vision:", data);
+                     return "Não foi possível identificar a peça.";
+                }
+
+
+            } catch (error) {
+                console.error("Erro na chamada fetch para Gemini Vision:", error);
+                return "Erro de comunicação com a API de análise.";
+            }
             */
 
-            console.log("Chamando Gemini Vision com imagem e chave API (placeholder)...");
-            console.log("API Key (placeholder):", apiKey); // Para demonstração, não faça isso em código real
-            // Simulação de resposta da API
+            // Simulação de resposta da API (mantido para o MVP funcionar sem a chave real)
             await new Promise(resolve => setTimeout(resolve, 2000)); // Simula delay da API
             const mockResults = ["camiseta azul", "calça jeans", "vestido estampado", "jaqueta de couro"];
             const randomIndex = Math.floor(Math.random() * mockResults.length);
             return mockResults[randomIndex]; // Retorna um tipo de peça aleatório para demonstração
         }
 
-        // Função placeholder para sugerir alternativa sustentável
+        // Função para sugerir alternativa sustentável
         function suggestSustainableAlternative(clothingType) {
             // Lógica simples para sugerir alternativas baseadas no tipo de peça
+            // Esta lógica pode ser expandida ou até mesmo usar o Gemini para sugestões mais criativas
             if (clothingType.includes("camiseta")) {
                 return "Considere camisetas de algodão orgânico ou reciclado.";
             } else if (clothingType.includes("calça jeans")) {
@@ -242,31 +294,59 @@
             }
         }
 
-        // Função placeholder para buscar lojas próximas com Google Maps
-        // Agora aceita a chave da API, mas ainda usa dados mock
+        // Função para buscar lojas próximas com Google Maps Places
+        // ATENÇÃO: Implementação real requer tratamento de resposta e erros.
+        // Para produção, esta chamada deve ser feita por um BACKEND SEGURO.
+        // A obtenção da localização real do usuário também é assíncrona.
         async function searchNearbyStores(clothingType, location, apiKey) {
-            // Aqui seria a chamada real para a API do Google Maps Places
-            // Exemplo (requer configuração e tratamento de resposta da API):
+            console.log(`Chamando Google Maps com query (exemplo comentado), localização:`, location, `e chave API (exemplo comentado)...`);
+            // console.log("API Key (placeholder):", apiKey); // Evite logar chaves em código real
+
+            // Exemplo de chamada real para a API do Google Maps Places Nearby Search (requer configuração e tratamento de resposta da API):
             /*
-            const query = `lojas de roupa sustentável ou brechó perto de mim ${clothingType}`; // Query mais específica
-            const response = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.lat},${location.lng}&radius=5000&type=clothing_store&keyword=${encodeURIComponent(query)}&key=${apiKey}`);
-            const data = await response.json();
-            // Processar a resposta para extrair a lista de lojas
-            console.log("Resposta Google Maps (mock):", data);
-            // Mapear a resposta real para o formato mockStores
-            const realStores = data.results.map(place => ({
-                 name: place.name,
-                 address: place.vicinity, // Ou formatado_address dependendo da API
-                 distance: 'Distância aproximada' // A API Nearby Search não retorna distância diretamente, precisaria de Distance Matrix API
-            }));
-            return realStores;
+            const RADIUS = 5000; // Raio de busca em metros (5km)
+            // Podemos usar o tipo de roupa identificado para refinar a busca, mas no MVP genérico é suficiente
+            const keywordQuery = `lojas de roupa sustentável ou brechó`; // Query de palavra-chave
+
+            const API_URL = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.lat},${location.lng}&radius=${RADIUS}&type=clothing_store&keyword=${encodeURIComponent(keywordQuery)}&key=${apiKey}`;
+
+            try {
+                const response = await fetch(API_URL);
+
+                 if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("Erro na API Google Maps Places:", response.status, errorData);
+                    return []; // Retorna lista vazia em caso de erro
+                }
+
+                const data = await response.json();
+                console.log("Resposta Google Maps Places:", data);
+
+                // Processar a resposta para extrair a lista de lojas
+                // A estrutura da resposta pode variar, ajuste conforme necessário
+                if (data.results && data.results.length > 0) {
+                    // Mapear a resposta real para o formato mockStores
+                    const realStores = data.results.map(place => ({
+                         name: place.name,
+                         address: place.vicinity || place.formatted_address || 'Endereço não disponível',
+                         // A API Nearby Search não retorna distância diretamente. Precisaria da Distance Matrix API para isso.
+                         // Para o MVP, podemos omitir a distância ou usar um placeholder.
+                         distance: 'Distância aproximada' // Placeholder
+                    }));
+                    return realStores;
+                } else {
+                    console.log("Nenhum resultado encontrado pela API Google Maps Places.");
+                    return []; // Retorna lista vazia se nenhum resultado for encontrado
+                }
+
+
+            } catch (error) {
+                console.error("Erro na chamada fetch para Google Maps Places:", error);
+                return []; // Retorna lista vazia em caso de erro de comunicação
+            }
             */
 
-            const query = `lojas de roupa sustentável ou brechó perto de mim`; // Query genérica para MVP
-            console.log(`Chamando Google Maps com query: "${query}", localização:`, location, `e chave API (placeholder)...`);
-            console.log("API Key (placeholder):", apiKey); // Para demonstração, não faça isso em código real
-
-            // Simulação de resposta da API
+            // Simulação de resposta da API (mantido para o MVP funcionar sem a chave real)
             await new Promise(resolve => setTimeout(resolve, 3000)); // Simula delay da API
             const mockStores = [
                 { name: "Brechó da Esquina", address: "Rua A, 123", distance: "500m" },
