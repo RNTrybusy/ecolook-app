@@ -14,15 +14,19 @@
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            margin: 0; /* Ensure no default body margin */
         }
         .container {
             background-color: #fff;
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            /* text-align: center; Removido para usar alinhamento flexbox */
             max-width: 500px;
             width: 100%;
+            display: flex; /* Torna o contêiner um flex container */
+            flex-direction: column; /* Empilha os itens filhos verticalmente */
+            align-items: center; /* Centraliza os itens filhos horizontalmente */
         }
         #camera-feed {
             width: 100%;
@@ -67,6 +71,7 @@
         #results {
             margin-top: 30px;
             text-align: left;
+            width: 100%; /* Ensure results div takes full container width */
         }
         #results h3 {
             margin-bottom: 10px;
