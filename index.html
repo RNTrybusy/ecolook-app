@@ -94,7 +94,12 @@
             80%, 100% { content: ''; } /* Optional: make it disappear briefly */
         }
     </style>
-</head>
+
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="EcoLook">
+    </head>
 <body>
     <div class="container">
         <h1>EcoLook MVP</h1>
@@ -120,7 +125,7 @@
         // EM UM AMBIENTE DE PRODUÇÃO REAL, ESTA CHAVE DEVE SER GERENCIADA EM UM BACKEND SEGURO.
         // NUNCA EXPONHA SUAS CHAVES DE API DIRETAMENTE NO CÓDIGO CLIENT-SIDE.
         // Substitua 'SUA_CHAVE_GOOGLE_AQUI' pela chave do seu arquivo .env para testes LOCAIS/MVP.
-        const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY; // <-- Substitua aqui para testar
+        const GOOGLE_API_KEY = 'AIzaSyCDpVVW1SkRf2obTuRzkCEbedjNJPKZp_8'; // <-- Substitua aqui para testar
         // Modelo Gemini atualizado conforme solicitado
         const GEMINI_MODEL = 'gemini-2.0-flash';
 
@@ -133,6 +138,21 @@
         const sustainableSuggestionP = document.getElementById('sustainable-suggestion');
         const nearbyStoresListUl = document.getElementById('nearby-stores-list');
         let currentStream;
+
+        // --- Registro do Service Worker (para PWA) ---
+        // Este código tenta registrar o service worker. O arquivo service-worker.js precisa existir.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.error('Falha ao registrar Service Worker:', err);
+                    });
+            });
+        }
+
 
         // Função para iniciar a câmera
         async function startCamera() {
@@ -401,5 +421,5 @@
         window.addEventListener('load', startCamera);
 
     </script>
-</body>
+    </body>
 </html>
