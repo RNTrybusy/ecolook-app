@@ -334,9 +334,9 @@
             <li>Use a câmera para escanear uma peça de roupa.</li>
             <li>O aplicativo (usando Google Gemini) tentará identificar o tipo de peça.</li>
             <li>Sugeriremos um tipo de alternativa sustentável para essa peça.</li>
-            <li>Buscaremos lojas de moda sustentável ou brechós próximos à sua localização e forneceremos links para visualizá-las no Google Maps.</li>
+            <li>Buscaremos lojas de moda sustentável ou brechós próximos à sua localização utilizando dados do OpenStreetMap (via Overpass API) e forneceremos links para visualizá-las no Google Maps.</li>
         </ol>
-        <p class="mt-4 text-sm text-gray-600"><strong>Nota sobre a busca de lojas:</strong> A busca inicial por lojas é realizada no backend, mas para evitar custos de API de exibição de dados, o aplicativo fornece links diretos para o Google Maps, onde você pode ver os detalhes e a localização exata.</p>
+        <p class="mt-4 text-sm text-gray-600"><strong>Nota sobre a busca de lojas:</strong> A busca por lojas próximas utiliza dados colaborativos do OpenStreetMap, que podem não incluir todos os estabelecimentos. A precisão e a completude dos resultados dependem da informação disponível no OSM para a sua região. Os links levam para o Google Maps para visualização.</p>
          <p class="mt-2 text-sm text-gray-600">Desenvolvido com ❤️ e IA.</p>
       </div>
     </div>
@@ -511,7 +511,7 @@
 
                     feedbackDiv.textContent = 'Enviando imagem e localização para análise...';
 
-                    // --- Chamar o Backend para Análise e Busca ---
+                    // --- Chamar o Backend para Análise e Busca (agora usando Overpass API) ---
                     try {
                         const formData = new FormData();
                         formData.append('imageDataUrl', imageDataUrl);
@@ -537,7 +537,7 @@
 
                             const identifiedClothing = result.identifiedClothing;
                             const sustainableSuggestion = result.sustainableSuggestion;
-                            const nearbyStores = result.nearbyStores; // Recebe os dados reais (ou lista vazia) da API Places
+                            const nearbyStores = result.nearbyStores; // Recebe os dados da Overpass API
 
                             // Exibe o item detectado na nova seção
                             identifiedClothingText.textContent = identifiedClothing;
@@ -550,8 +550,8 @@
                             // Adiciona um pequeno delay antes de mostrar a busca de lojas
                             await new Promise(resolve => setTimeout(resolve, 1500)); // Pausa de 1.5 segundos
 
-                            // Atualiza o feedback para indicar a busca de lojas (agora real)
-                            feedbackDiv.textContent = 'Buscando lojas próximas...';
+                            // Atualiza o feedback para indicar a busca de lojas (agora usando OSM)
+                            feedbackDiv.textContent = 'Buscando lojas próximas (OpenStreetMap)...';
 
 
                             // Simula um pequeno delay antes de exibir os resultados das lojas (para dar tempo de ler a sugestão)
@@ -562,7 +562,7 @@
                                 resultsDiv.style.display = 'block';
                                 displayNearbyStores(nearbyStores);
                              } else {
-                                 feedbackDiv.textContent = 'Nenhuma loja sustentável ou brechó encontrado próximo.';
+                                 feedbackDiv.textContent = 'Nenhuma loja sustentável ou brechó encontrado próximo no OpenStreetMap.';
                                  resultsDiv.style.display = 'block'; // Ainda mostra a seção de resultados para a mensagem
                                  nearbyStoresListUl.innerHTML = '<li>Nenhum resultado encontrado.</li>';
                              }

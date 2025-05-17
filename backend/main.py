@@ -1,12 +1,12 @@
 # Importa as bibliotecas necessárias para FastAPI e outras funcionalidades
 import os
 import base64
-import time # Para simular delay na busca mock (agora menos usado)
-import requests # Para fazer requisições HTTP para a API Google Places
+import time
+import requests # Para fazer requisições HTTP para a Overpass API
 from fastapi import FastAPI, HTTPException, status, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel # Para validar dados de entrada
-from typing import Union # Para tipos de dados opcionais ou múltiplos
+from pydantic import BaseModel
+from typing import Union, List, Dict, Any
 
 # Importa a biblioteca para carregar variáveis de ambiente do arquivo .env
 from dotenv import load_dotenv
@@ -18,8 +18,7 @@ load_dotenv()
 import google.generativeai as genai
 
 # --- Configuração da Chave da API do Google ---
-# É CRUCIAL configurar a variável de ambiente GOOGLE_API_KEY no seu servidor/ambiente de execução do backend.
-# Esta chave será usada tanto para o Gemini quanto para a Google Places API.
+# A API Key ainda é necessária para a integração com o Gemini Vision.
 # Em produção, use um gerenciador de segredos (Secret Manager) ou variáveis de ambiente configuradas de forma segura.
 API_KEY = os.environ.get('GOOGLE_API_KEY')
 
@@ -46,99 +45,132 @@ app = FastAPI()
 # Permite que o frontend (sua PWA rodando em outro domínio/porta) faça requisições para este backend.
 # Em produção, ajuste 'allow_origins' para a URL específica do seu frontend para maior segurança.
 origins = [
-    "http://localhost", # Permite localhost
-    "http://localhost:8000", # Exemplo de porta comum para frontend local
-    "http://localhost:5000", # Exemplo se o frontend estiver na mesma porta do Flask anterior
-    "http://127.0.0.1", # Permite 127.0.0.1
-    "http://127.0.0.1:8000", # Porta padrão do Uvicorn
-    "http://127.0.0.1:5000", # Exemplo de outra porta comum para 127.0.0.1
-    "http://127.0.0.1:5500", # <-- Adicionado a porta 5500 do Live Server (se aplicável)
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:5000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:5000",
+    "http://127.0.0.1:5500", # Porta comum do Live Server
     # Adicione a URL de produção da sua PWA aqui quando estiver em deploy
     # "https://sua-pwa-em-producao.com",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Lista de origens permitidas
-    allow_credentials=True, # Permite cookies (não usados aqui, mas boa prática)
-    allow_methods=["*"], # Permite todos os métodos (GET, POST, etc.)
-    allow_headers=["*"], # Permite todos os headers
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Definição do Modelo Pydantic para Localização do Usuário ---
-# Define a estrutura esperada para os dados de localização recebidos do frontend.
 class UserLocation(BaseModel):
     lat: float
     lng: float
 
-# --- Função que CHAMA a API Google Places (Real) ---
-# Esta função representa a ferramenta que um Agente Gemini usaria para buscar locais.
-# AGORA ela faz a chamada real para a Google Places API (New) - searchNearby.
-def google_maps_search_tool(query: str, location: dict):
+# --- Função que CHAMA a Overpass API (OpenStreetMap) ---
+# Esta função busca dados de lojas no OpenStreetMap usando a Overpass API.
+def osm_overpass_search_tool(query: str, location: dict) -> List[Dict[str, Any]]:
     """
-    Chama a Google Places API (New) - searchNearby para buscar lugares.
+    Busca por lugares (lojas de roupa sustentável, brechós) no OpenStreetMap
+    usando a Overpass API.
 
     Args:
-        query: A string de busca (ex: "lojas de roupa sustentável").
+        query: A string de busca (usada para refinar as tags OSM).
         location: Um dicionário com as chaves 'lat' e 'lng' para a localização.
 
     Returns:
         Uma lista de dicionários representando os lugares encontrados.
         Retorna lista vazia em caso de erro ou nenhum resultado.
     """
-    print(f"Chamando a Google Places API para buscar: Query='{query}', Localização='{location}'")
+    print(f"Chamando a Overpass API para buscar: Query='{query}', Localização='{location}'")
 
-    places_api_url = 'https://places.googleapis.com/v1/places:searchNearby'
-    headers = {
-        'X-Goog-Api-Key': API_KEY,
-        'Content-Type': 'application/json',
-        # Campos que queremos na resposta (reduz custo e melhora performance)
-        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.types'
-    }
-    body = {
-        'locationRestriction': {
-            'circle': {
-                'center': {'latitude': location['lat'], 'longitude': location['lng']},
-                'radius': 5000 # Raio de busca em metros (ex: 5km). Ajuste conforme necessário.
-            }
-        },
-        'textQuery': query,
-        # Tipos de lugar que podem ser relevantes. Ajuste esta lista.
-        'includedTypes': ['clothing_store', 'second_hand_store', 'boutique', 'department_store', 'shopping_mall'],
-        'languageCode': 'pt-BR', # Idioma da resposta
-        'maxResultCount': 10 # Número máximo de resultados. Ajuste conforme necessário.
-    }
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    radius_meters = 5000 # Raio de busca em metros (ex: 5km). Ajuste conforme necessário.
+    lat = location['lat']
+    lng = location['lng']
+
+    # Construindo a query Overpass dinamicamente
+    # Buscamos por nodes, ways e relations com tags relevantes
+    # Tentamos incluir termos da query na busca por nome ou descrição, se possível
+    # Esta é uma query básica, pode ser refinada para incluir mais tags relevantes
+    overpass_query = f"""
+    [out:json][timeout:25];
+    (
+      node["shop"="second_hand"](around:{radius_meters}, {lat}, {lng});
+      way["shop"="second_hand"](around:{radius_meters}, {lat}, {lng});
+      relation["shop"="second_hand"](around:{radius_meters}, {lat}, {lng});
+
+      node["shop"="clothes"](around:{radius_meters}, {lat}, {lng});
+      way["shop"="clothes"](around:{radius_meters}, {lat}, {lng});
+      relation["shop"="clothes"](around:{radius_meters}, {lat}, {lng});
+
+      node["second_hand"="yes"](around:{radius_meters}, {lat}, {lng});
+      way["second_hand"="yes"](around:{radius_meters}, {lat}, {lng});
+      relation["second_hand"="yes"](around:{radius_meters}, {lat}, {lng});
+
+      // Adicionar busca por nome ou descrição contendo termos da query (experimental)
+      node(around:{radius_meters}, {lat}, {lng})[~"name|description"~".*{query}.*", i];
+      way(around:{radius_meters}, {lat}, {lng})[~"name|description"~".*{query}.*", i];
+      relation(around:{radius_meters}, {lat}, {lng})[~"name|description"~".*{query}.*", i];
+
+    );
+    out center;
+    """
+    # Nota sobre a busca por query: A busca por nome/descrição com regex pode ser lenta
+    # e não é ideal para todas as queries. É uma tentativa de usar a query do Gemini.
 
     try:
-        response = requests.post(places_api_url, json=body, headers=headers)
+        # Faz a requisição POST para a Overpass API
+        response = requests.post(overpass_url, data={"data": overpass_query})
         response.raise_for_status() # Levanta um erro HTTP para status ruins (4xx ou 5xx)
 
-        places_data = response.json()
-        print(f"Resposta da API Places recebida: {places_data}")
+        osm_data = response.json()
+        print(f"Resposta da Overpass API recebida (elementos: {len(osm_data.get('elements', []))}):")
+        # print(json.dumps(osm_data, indent=2)) # Descomente para ver a resposta completa da API
 
-        real_stores = []
-        # A resposta da API Places (New) searchNearby tem a lista de lugares em 'places'
-        if places_data.get('places'):
-            for place in places_data['places']:
-                 # Mapeia a resposta da API para o formato esperado pelo frontend
-                 real_stores.append({
-                    "name": place.get('displayName', {}).get('text', 'Nome não disponível'),
-                    "address": place.get('formattedAddress', 'Endereço não disponível'),
-                    # Nota: A API Places (New) searchNearby NÃO retorna distância diretamente.
-                    # Para obter a distância real, você precisaria usar a Distance Matrix API
-                    # ou calcular a distância geodésica no backend.
-                    # Manteremos um placeholder ou omitiremos por enquanto para simplificar o MVP.
-                    "distance": "Distância N/A (requer Distance Matrix API)" # Placeholder
-                 })
-        return real_stores
+        nearby_stores = []
+        if osm_data.get('elements'):
+            for element in osm_data['elements']:
+                # Extrai informações relevantes dos elementos OSM
+                name = element.get('tags', {}).get('name', 'Nome não disponível')
+                # Tenta obter o endereço de várias tags comuns
+                address_parts = []
+                tags = element.get('tags', {})
+                if tags.get('addr:street'): address_parts.append(tags['addr:street'])
+                if tags.get('addr:housenumber'): address_parts.append(tags['addr:housenumber'])
+                if tags.get('addr:city'): address_parts.append(tags['addr:city'])
+                if tags.get('addr:postcode'): address_parts.append(tags['addr:postcode'])
+
+                address = ", ".join(address_parts) if address_parts else "Endereço não disponível"
+
+                # Coordenadas do elemento (para nodes) ou centro (para ways/relations com out center)
+                element_lat = element.get('lat', element.get('center', {}).get('lat'))
+                element_lng = element.get('lon', element.get('center', {}).get('lon'))
+
+                # Nota: Distância não é retornada pela Overpass API.
+                # Poderíamos calcular a distância geodésica aqui se necessário,
+                # mas para o MVP manteremos um placeholder ou omitiremos.
+                distance = "Distância N/A" # Placeholder
+
+                # Adiciona o lugar à lista de resultados
+                nearby_stores.append({
+                    "name": name,
+                    "address": address,
+                    "distance": distance, # Mantém o placeholder
+                    "lat": element_lat, # Opcional: incluir coordenadas para uso futuro
+                    "lng": element_lng  # Opcional: incluir coordenadas para uso futuro
+                })
+
+        return nearby_stores
 
     except requests.exceptions.RequestException as e:
-        print(f"Erro na chamada da API Google Places: {e}")
-        # Em caso de erro na API real, retornamos uma lista vazia e logamos o erro.
-        # Você pode querer adicionar um tratamento de erro mais sofisticado aqui.
+        print(f"Erro na chamada da Overpass API: {e}")
+        # Em caso de erro na API, retornamos uma lista vazia e logamos o erro.
         return []
     except Exception as e:
-        print(f"Erro inesperado ao processar resposta da API Places: {e}")
+        print(f"Erro inesperado ao processar resposta da Overpass API: {e}")
         return []
 
 
@@ -146,23 +178,18 @@ def google_maps_search_tool(query: str, location: dict):
 # Este endpoint recebe a imagem (como string base64) e a localização do frontend.
 @app.post("/analyze_and_find_stores")
 async def analyze_and_find_stores_endpoint(
-    imageDataUrl: str = Form(...), # Recebe a URL de dados da imagem como string de formulário
-    userLocation: str = Form(...) # Recebe a localização como string JSON de formulário
+    imageDataUrl: str = Form(...),
+    userLocation: str = Form(...)
 ):
-    # Verifica se a chave da API está configurada antes de prosseguir
     if not API_KEY:
-         # Retorna um erro 500 se a chave não estiver configurada
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="API Key do Google não configurada no backend."
         )
 
-    # Converte a string JSON da localização para um dicionário/objeto Python
     import json
     try:
         user_location_data = json.loads(userLocation)
-        # Opcional: Validar a estrutura da localização usando Pydantic se necessário
-        # user_location_obj = UserLocation(**user_location_data)
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -174,11 +201,8 @@ async def analyze_and_find_stores_endpoint(
             detail=f"Dados de localização do usuário inválidos: {e}"
         )
 
-
     try:
         # 1. Análise da Imagem com Gemini Vision
-        # Extrai os dados base64 da URL (remove o prefixo 'data:image/png;base64,')
-        # Verifica se a string base64 tem o formato esperado
         if ',' not in imageDataUrl:
              raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -186,7 +210,6 @@ async def analyze_and_find_stores_endpoint(
             )
         image_base64 = imageDataUrl.split(',')[1]
 
-        # Decodifica a string base64 para bytes
         try:
             image_bytes = base64.b64decode(image_base64)
         except base64.binascii.Error:
@@ -195,15 +218,11 @@ async def analyze_and_find_stores_endpoint(
                 detail="Dados da imagem não estão em formato base64 válido."
             )
 
-
-        # Cria o conteúdo para a requisição do Gemini Vision
-        # Prompt ajustado para focar apenas na identificação da peça
         prompt_parts = [
             "Descreva a peça de roupa nesta imagem em poucas palavras, focando no tipo e cor principal. Ex: 'camiseta azul', 'calça jeans preta'. Se não for uma peça de roupa, diga 'Não é uma peça de roupa'.",
-            {"mime_type": "image/png", "data": image_bytes} # Adiciona a imagem como parte do prompt
+            {"mime_type": "image/png", "data": image_bytes}
         ]
 
-        # Inicializa o modelo Gemini Vision
         try:
             model = genai.GenerativeModel(model_name=GEMINI_MODEL)
         except Exception as e:
@@ -213,7 +232,6 @@ async def analyze_and_find_stores_endpoint(
                 detail=f"Erro ao configurar o modelo de IA: {e}"
             )
 
-        # Gera o conteúdo (analisa a imagem)
         try:
             safety_settings = [
                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -258,7 +276,6 @@ async def analyze_and_find_stores_endpoint(
                     detail=f"Erro ao analisar a imagem com a IA: {str(e)}"
                 )
 
-        # Processa a resposta da análise para obter a peça identificada
         identified_clothing = "Não foi possível identificar a peça."
         if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
              text_result = response.candidates[0].content.parts[0].text.strip()
@@ -274,9 +291,7 @@ async def analyze_and_find_stores_endpoint(
              if identified_clothing.lower() == "não é uma peça de roupa":
                  identified_clothing = "Não foi identificado uma peça de roupa na imagem."
 
-
-        # 2. Sugestão Sustentável (Lógica aprimorada no backend)
-        # A sugestão ainda é baseada na lógica interna do backend por enquanto
+        # 2. Sugestão Sustentável
         sustainable_suggestion = "Não foi possível sugerir uma alternativa sustentável."
         if "Não foi identificado" not in identified_clothing and "Erro" not in identified_clothing and "Não foi possível identificar" not in identified_clothing:
             clothing_lower = identified_clothing.lower()
@@ -297,30 +312,29 @@ async def analyze_and_find_stores_endpoint(
             else:
                 sustainable_suggestion = "Para esta peça, busque por opções feitas com materiais sustentáveis, reciclados, orgânicos ou de segunda mão. A escolha de materiais de baixo impacto ambiental faz uma grande diferença."
 
-
-        # 3. Busca de Lojas Próximas (Usando a função que CHAMA a API REAL)
+        # 3. Busca de Lojas Próximas (Usando a Overpass API)
         # A query para a ferramenta agora é mais específica com base na peça identificada.
-        search_query = f"loja de roupa sustentável ou brechó que vende {identified_clothing}"
-        # Chama a função que agora integra com a API Google Places
-        nearby_stores = google_maps_search_tool(query=search_query, location=user_location_data)
+        # Usamos a peça identificada para tentar refinar a busca no OSM, embora a precisão dependa das tags no OSM.
+        search_term_for_osm = "brechó" # Termo base para busca no OSM
+        clothing_lower = identified_clothing.lower()
+        if "roupa" in clothing_lower or "vestuário" in clothing_lower or "moda" in clothing_lower:
+             search_term_for_osm = "roupa sustentável" # Tenta refinar se a identificação for genérica
+        elif "jeans" in clothing_lower:
+             search_term_for_osm = "brechó jeans" # Tenta refinar para jeans
+        # Adicione mais lógica aqui para refinar search_term_for_osm com base em outras peças
 
-        # Nota: Se a chamada à API Places falhar ou não encontrar resultados,
-        # a função google_maps_search_tool retornará uma lista vazia,
-        # e o frontend exibirá "Nenhuma loja sustentável ou brechó encontrado próximo."
-
+        nearby_stores = osm_overpass_search_tool(query=search_term_for_osm, location=user_location_data)
 
         # Retorna os resultados para o frontend em formato JSON
         return {
             "identifiedClothing": identified_clothing,
             "sustainableSuggestion": sustainable_suggestion,
-            "nearbyStores": nearby_stores # Retorna os dados reais (ou lista vazia) da API Places
+            "nearbyStores": nearby_stores # Retorna os dados obtidos da Overpass API
         }
 
     except HTTPException as e:
-        # Captura e re-lança exceções HTTP personalizadas que criamos
         raise e
     except Exception as e:
-        # Captura quaisquer outros erros inesperados e retorna um erro 500
         print(f"Erro inesperado no backend: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
