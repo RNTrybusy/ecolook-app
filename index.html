@@ -131,6 +131,28 @@
             min-height: 1.5em; /* Increased min-height */
             text-align: center; /* Center feedback text */
         }
+
+        /* New style for identified item section */
+        #identified-item-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #cfd8dc;
+            width: 100%;
+            text-align: center;
+            display: none; /* Hidden initially */
+        }
+         #identified-item-section h3 {
+             color: #00796b;
+             font-size: 1.2em;
+             margin-bottom: 5px;
+         }
+         #identified-item-section p {
+             color: #333;
+             font-size: 1.1em;
+             font-weight: bold;
+         }
+
+
         #results {
             margin-top: 30px;
             text-align: left;
@@ -267,6 +289,11 @@
 
         <div id="feedback" role="status" aria-live="polite"></div>
 
+        <div id="identified-item-section">
+            <h3>Item Detectado:</h3>
+            <p id="identified-clothing-text"></p>
+        </div>
+
         <div id="results" style="display: none;">
             <h3>Resultados</h3>
             <p id="sustainable-suggestion"></p>
@@ -314,6 +341,9 @@
         const nearbyStoresListUl = document.getElementById('nearby-stores-list');
         const aboutModal = document.getElementById('about-modal'); // O Modal
         const closeModalBtn = document.getElementById('close-modal-btn'); // Botão fechar modal
+        const identifiedItemSection = document.getElementById('identified-item-section'); // Nova seção Item Detectado
+        const identifiedClothingText = document.getElementById('identified-clothing-text'); // Parágrafo para o texto do item detectado
+
 
         let currentStream;
 
@@ -334,11 +364,16 @@
 
         // Função para iniciar a câmera
         async function startCamera() {
-            // Esconde resultados e botão de limpar
+            // Esconde resultados, seção de item detectado e botões de resultados
             resultsDiv.style.display = 'none';
+            identifiedItemSection.style.display = 'none'; // Esconde a nova seção
             clearResultsBtn.style.display = 'none';
-            nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
-            sustainableSuggestionP.textContent = ''; // Limpa sugestão anterior
+            scanAnotherBtn.style.display = 'none'; // Esconde escanear outra no início do fluxo
+
+            // Limpa conteúdo anterior
+            nearbyStoresListUl.innerHTML = '';
+            sustainableSuggestionP.textContent = '';
+            identifiedClothingText.textContent = ''; // Limpa o texto do item detectado
 
 
             // Verifica se a API de mídia está disponível
@@ -348,7 +383,6 @@
                 cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
                 cameraPlaceholder.textContent = '🚫'; // Ícone de erro
                 captureBtn.style.display = 'none'; // Esconde o botão de captura
-                scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                 return;
             }
 
@@ -359,7 +393,6 @@
                  cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
                  cameraPlaceholder.textContent = '🔒'; // Ícone de cadeado
                  captureBtn.style.display = 'none'; // Esconde o botão de captura
-                 scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                  return;
             }
 
@@ -373,9 +406,7 @@
                 cameraFeed.style.display = 'block'; // Mostra o feed da câmera
                 capturedImage.style.display = 'none'; // Esconde a imagem capturada
                 captureBtn.style.display = 'block'; // Mostra o botão de captura
-                scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                 feedbackDiv.textContent = 'Posicione a roupa na frente da câmera.';
-                resultsDiv.style.display = 'none';
             } catch (err) {
                 console.error("Erro ao acessar a câmera:", err);
                 cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
@@ -398,6 +429,7 @@
                 }
                  captureBtn.style.display = 'none'; // Esconde o botão de captura se a câmera falhar
                  scanAnotherBtn.style.display = 'block'; // Mostra o botão de tentar novamente (escanear outra)
+                 clearResultsBtn.style.display = 'block'; // Mostra limpar em caso de erro inicial da câmera
             }
         }
 
@@ -438,11 +470,14 @@
             captureBtn.style.display = 'none'; // Esconde o botão de captura
             scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra temporariamente
             clearResultsBtn.style.display = 'none'; // Esconde o botão de limpar resultados
+            identifiedItemSection.style.display = 'none'; // Esconde a nova seção
+            resultsDiv.style.display = 'none'; // Esconde a seção de resultados
 
 
             feedbackDiv.textContent = 'Obtendo localização...';
-            resultsDiv.style.display = 'none';
             nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+            sustainableSuggestionP.textContent = ''; // Limpa sugestão anterior
+            identifiedClothingText.textContent = ''; // Limpa o texto do item detectado
 
 
             // --- Obter Localização do Usuário ---
@@ -474,6 +509,7 @@
                             console.error("Erro do Backend:", response.status, result);
                             // Exibe o detalhe do erro retornado pelo backend se disponível
                             feedbackDiv.textContent = `Erro: ${result.detail || 'Erro desconhecido do backend.'}`;
+                            identifiedItemSection.style.display = 'none'; // Garante que a seção não seja exibida em caso de erro
                             resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
                         } else {
                             // Processa a resposta de sucesso do backend
@@ -481,30 +517,42 @@
 
                             const identifiedClothing = result.identifiedClothing;
                             const sustainableSuggestion = result.sustainableSuggestion;
-                            const nearbyStores = result.nearbyStores; // Recebe os dados mock do backend
+                            const nearbyStores = result.nearbyStores; // Recebe os dados reais (ou lista vazia) da API Places
 
-                            // Atualiza feedback com análise e sugestão
-                            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugestão: ${sustainableSuggestion}`;
+                            // Exibe o item detectado na nova seção
+                            identifiedClothingText.textContent = identifiedClothing;
+                            identifiedItemSection.style.display = 'block'; // Mostra a nova seção
+
+                            // Atualiza feedback com a sugestão
+                            feedbackDiv.textContent = `Sugestão: ${sustainableSuggestion}`;
                             sustainableSuggestionP.textContent = sustainableSuggestion; // Exibe a sugestão na área de resultados
 
                             // Adiciona um pequeno delay antes de mostrar a busca de lojas
                             await new Promise(resolve => setTimeout(resolve, 1500)); // Pausa de 1.5 segundos
 
-                            // Atualiza o feedback para indicar a busca de lojas (mesmo que mock)
-                            feedbackDiv.textContent = 'Buscando lojas próximas... (dados simulados)';
+                            // Atualiza o feedback para indicar a busca de lojas (agora real)
+                            feedbackDiv.textContent = 'Buscando lojas próximas...';
 
 
                             // Simula um pequeno delay antes de exibir os resultados das lojas (para dar tempo de ler a sugestão)
                             await new Promise(resolve => setTimeout(resolve, 1000));
 
-                            feedbackDiv.textContent = 'Resultados encontrados:'; // Feedback final antes de exibir a lista
-                            resultsDiv.style.display = 'block';
-                            displayNearbyStores(nearbyStores);
+                             if (nearbyStores && nearbyStores.length > 0) {
+                                feedbackDiv.textContent = 'Lojas encontradas:'; // Feedback final antes de exibir a lista
+                                resultsDiv.style.display = 'block';
+                                displayNearbyStores(nearbyStores);
+                             } else {
+                                 feedbackDiv.textContent = 'Nenhuma loja sustentável ou brechó encontrado próximo.';
+                                 resultsDiv.style.display = 'block'; // Ainda mostra a seção de resultados para a mensagem
+                                 nearbyStoresListUl.innerHTML = '<li>Nenhum resultado encontrado.</li>';
+                             }
+
                         }
 
                     } catch (error) {
                         console.error("Erro na comunicação com o backend:", error);
                         feedbackDiv.textContent = `Erro de comunicação com o servidor: ${error.message}`;
+                         identifiedItemSection.style.display = 'none'; // Garante que a seção não seja exibida em caso de erro
                          resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
                     } finally {
                         feedbackDiv.classList.remove('loading'); // Remove loading após a resposta (sucesso ou erro)
@@ -516,6 +564,7 @@
                 }, (error) => {
                     console.error("Erro ao obter localização:", error);
                     feedbackDiv.textContent = 'Erro ao obter sua localização real. Não foi possível contatar o backend.';
+                    identifiedItemSection.style.display = 'none'; // Garante que a seção não seja exibida em caso de erro
                     resultsDiv.style.display = 'none';
                     nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
                     feedbackDiv.classList.remove('loading'); // Remove loading em caso de erro de geolocalização
@@ -525,6 +574,7 @@
                 });
             } else {
                 feedbackDiv.textContent = 'Geolocalização não suportada neste navegador. Não foi possível contatar o backend.';
+                 identifiedItemSection.style.display = 'none'; // Garante que a seção não seja exibida em caso de erro
                  resultsDiv.style.display = 'none';
                  nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
                  feedbackDiv.classList.remove('loading'); // Remove loading em caso de geolocalização não suportada
@@ -547,6 +597,9 @@
             capturedImage.style.display = 'none'; // Esconde a imagem capturada
             cameraPlaceholder.style.display = 'flex'; // Mostra o placeholder
             cameraPlaceholder.textContent = '📸'; // Reseta o ícone do placeholder
+
+            identifiedItemSection.style.display = 'none'; // Esconde a nova seção
+            identifiedClothingText.textContent = ''; // Limpa o texto do item detectado
 
             resultsDiv.style.display = 'none'; // Esconde a seção de resultados
             nearbyStoresListUl.innerHTML = ''; // Limpa a lista de lojas
@@ -584,7 +637,7 @@
         // Função para exibir a lista de lojas
         function displayNearbyStores(stores) {
             if (!stores || stores.length === 0) { // Verifica se a lista de stores é válida e não vazia
-                nearbyStoresListUl.innerHTML = '<li>Nenhuma loja sustentável ou brechó encontrado próximo.</li>';
+                nearbyStoresListUl.innerHTML = '<li>Nenhum resultado encontrado.</li>'; // Mensagem mais genérica
                 return;
             }
             nearbyStoresListUl.innerHTML = ''; // Limpa a lista antes de adicionar novos itens
