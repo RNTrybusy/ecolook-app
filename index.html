@@ -97,6 +97,14 @@
          button#scan-another-btn:hover:not(:disabled) {
              background-color: #37474f;
          }
+         button#clear-results-btn { /* Style for the new clear button */
+             background-color: #e57373; /* Reddish color */
+             display: none; /* Hidden initially */
+         }
+          button#clear-results-btn:hover:not(:disabled) {
+             background-color: #ef5350;
+         }
+
          button#about-btn {
              position: absolute;
              top: 15px;
@@ -136,6 +144,12 @@
             font-size: 1.2em;
             text-align: center; /* Center results heading */
         }
+         .mock-data-indicator { /* Style for mock data indicator */
+             font-size: 0.9em;
+             color: #757575;
+             text-align: center;
+             margin-bottom: 10px;
+         }
         #results ul {
             list-style: none;
             padding: 0;
@@ -246,8 +260,7 @@
 
         <button id="capture-btn" aria-label="Escanear Roupa">Escanear Roupa</button>
         <button id="scan-another-btn" style="display: none;" aria-label="Escanear Outra Roupa">Escanear Outra Roupa</button>
-
-        <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
+         <button id="clear-results-btn" aria-label="Limpar Resultados">Limpar Resultados</button> <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
 
         <div id="feedback" role="status" aria-live="polite"></div>
 
@@ -255,7 +268,7 @@
             <h3>Resultados</h3>
             <p id="sustainable-suggestion"></p>
             <h3 class="mt-4">Lojas Próximas:</h3>
-            <ul id="nearby-stores-list">
+             <p class="mock-data-indicator">(Dados simulados para MVP)</p> <ul id="nearby-stores-list">
                 </ul>
         </div>
     </div>
@@ -284,17 +297,12 @@
         // Exemplo: http://127.0.0.1:8000 se estiver rodando com `uvicorn main:app --reload` na porta 8000
         const BACKEND_URL = 'http://127.0.0.1:8000'; // <-- Atualize esta URL conforme onde seu backend estiver rodando
 
-        // --- Gerenciamento de Chaves de API (ATENÇÃO: RISCO DE SEGURANÇA NO FRONTEND) ---
-        // A chave de API do Google NÃO é mais usada diretamente no frontend.
-        // Ela é gerenciada de forma segura no backend.
-        // const GOOGLE_API_KEY = 'SUA_CHAVE_GOOGLE_AQUI'; // REMOVIDO DO FRONTEND
-        // const GEMINI_MODEL = 'gemini-2.0-flash'; // REMOVIDO DO FRONTEND
-
         const cameraFeed = document.getElementById('camera-feed');
         const capturedImage = document.getElementById('captured-image');
         const cameraPlaceholder = document.getElementById('camera-placeholder'); // Novo elemento placeholder
         const captureBtn = document.getElementById('capture-btn');
         const scanAnotherBtn = document.getElementById('scan-another-btn'); // Novo botão
+        const clearResultsBtn = document.getElementById('clear-results-btn'); // Novo botão Limpar Resultados
         const aboutBtn = document.getElementById('about-btn'); // Botão "Sobre"
         const feedbackDiv = document.getElementById('feedback');
         const resultsDiv = document.getElementById('results');
@@ -322,6 +330,13 @@
 
         // Função para iniciar a câmera
         async function startCamera() {
+            // Esconde resultados e botão de limpar
+            resultsDiv.style.display = 'none';
+            clearResultsBtn.style.display = 'none';
+            nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+            sustainableSuggestionP.textContent = ''; // Limpa sugestão anterior
+
+
             // Verifica se a API de mídia está disponível
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 feedbackDiv.textContent = 'Seu navegador não suporta acesso à câmera.';
@@ -418,11 +433,13 @@
 
             captureBtn.style.display = 'none'; // Esconde o botão de captura
             scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra temporariamente
+            clearResultsBtn.style.display = 'none'; // Esconde o botão de limpar resultados
 
 
-            feedbackDiv.textContent = 'Enviando para análise...';
+            feedbackDiv.textContent = 'Obtendo localização...';
             resultsDiv.style.display = 'none';
             nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+
 
             // --- Obter Localização do Usuário ---
             // Obtemos a localização no frontend e a enviamos para o backend.
@@ -433,7 +450,7 @@
                         lng: position.coords.longitude
                     };
 
-                    feedbackDiv.textContent = 'Enviando imagem e localização para o backend...';
+                    feedbackDiv.textContent = 'Enviando imagem e localização para análise...';
 
                     // --- Chamar o Backend para Análise e Busca ---
                     try {
@@ -451,6 +468,7 @@
                         if (!response.ok) {
                             // Trata erros retornados pelo backend (HTTPException)
                             console.error("Erro do Backend:", response.status, result);
+                            // Exibe o detalhe do erro retornado pelo backend se disponível
                             feedbackDiv.textContent = `Erro: ${result.detail || 'Erro desconhecido do backend.'}`;
                             resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
                         } else {
@@ -461,10 +479,17 @@
                             const sustainableSuggestion = result.sustainableSuggestion;
                             const nearbyStores = result.nearbyStores; // Recebe os dados mock do backend
 
-                            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugerindo alternativas sustentáveis...`;
-                            sustainableSuggestionP.textContent = sustainableSuggestion;
+                            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugestão: ${sustainableSuggestion}`;
+                            sustainableSuggestionP.textContent = sustainableSuggestion; // Exibe a sugestão na área de resultados
 
-                            feedbackDiv.textContent += ' Lojas próximas encontradas (dados simulados):';
+                            // Atualiza o feedback para indicar a busca de lojas (mesmo que mock)
+                            feedbackDiv.textContent += ' Buscando lojas próximas...';
+
+
+                            // Simula um pequeno delay antes de exibir os resultados das lojas (para dar tempo de ler a sugestão)
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+
+                            feedbackDiv.textContent = 'Resultados encontrados (dados simulados):'; // Indicando que são dados mock
                             resultsDiv.style.display = 'block';
                             displayNearbyStores(nearbyStores);
                         }
@@ -477,16 +502,18 @@
                         feedbackDiv.classList.remove('loading'); // Remove loading após a resposta (sucesso ou erro)
                         scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
                         captureBtn.disabled = false; // Reabilita o botão de captura (se ele for mostrado novamente)
+                         clearResultsBtn.style.display = 'block'; // Mostra o botão de limpar resultados após processamento
                     }
 
                 }, (error) => {
                     console.error("Erro ao obter localização:", error);
-                    feedbackDiv.textContent = 'Erro ao obter sua localização real para buscar lojas próximas. Não foi possível contatar o backend.';
+                    feedbackDiv.textContent = 'Erro ao obter sua localização real. Não foi possível contatar o backend.';
                     resultsDiv.style.display = 'none';
                     nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
                     feedbackDiv.classList.remove('loading'); // Remove loading em caso de erro de geolocalização
                     scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
                     captureBtn.disabled = false; // Reabilita o botão de captura
+                     clearResultsBtn.style.display = 'block'; // Mostra o botão de limpar resultados mesmo com erro de localização
                 });
             } else {
                 feedbackDiv.textContent = 'Geolocalização não suportada neste navegador. Não foi possível contatar o backend.';
@@ -495,6 +522,7 @@
                  feedbackDiv.classList.remove('loading'); // Remove loading em caso de geolocalização não suportada
                  scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
                  captureBtn.disabled = false; // Reabilita o botão de captura
+                 clearResultsBtn.style.display = 'block'; // Mostra o botão de limpar resultados
             }
         });
 
@@ -502,6 +530,27 @@
         scanAnotherBtn.addEventListener('click', () => {
             startCamera(); // Reinicia o fluxo iniciando a câmera
         });
+
+        // Event listener para o botão "Limpar Resultados"
+        clearResultsBtn.addEventListener('click', () => {
+            stopCamera(); // Garante que a câmera esteja parada
+            cameraFeed.srcObject = null; // Limpa o feed da câmera
+            cameraFeed.style.display = 'none'; // Esconde o feed da câmera
+            capturedImage.style.display = 'none'; // Esconde a imagem capturada
+            cameraPlaceholder.style.display = 'flex'; // Mostra o placeholder
+            cameraPlaceholder.textContent = '📸'; // Reseta o ícone do placeholder
+
+            resultsDiv.style.display = 'none'; // Esconde a seção de resultados
+            nearbyStoresListUl.innerHTML = ''; // Limpa a lista de lojas
+            sustainableSuggestionP.textContent = ''; // Limpa a sugestão
+
+            feedbackDiv.textContent = 'Resultados limpos. Pronto para escanear novamente.'; // Feedback
+            scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
+            clearResultsBtn.style.display = 'none'; // Esconde o botão de limpar
+            captureBtn.style.display = 'block'; // Mostra o botão de captura
+            captureBtn.disabled = false; // Garante que o botão de captura esteja habilitado
+        });
+
 
         // --- Lógica do Modal "Sobre" ---
         // Event listener para abrir o modal
@@ -522,7 +571,7 @@
         });
 
 
-        // --- Funções Auxiliares (Busca Mock agora no Backend) ---
+        // --- Funções Auxiliares ---
 
         // Função para exibir a lista de lojas
         function displayNearbyStores(stores) {
