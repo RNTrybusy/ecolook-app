@@ -56,13 +56,13 @@ Devido aos custos associados à Google Places API para exibição de dados, a es
 
 ## 7. Refinamento Final do Frontend: Links para Google Maps e Indicador de Carregamento
 
-Para complementar a busca via OSM e fornecer uma forma de visualizar a localização no mapa, os nomes das lojas na lista de resultados foram transformados em links que abrem uma busca no Google Maps. Um indicador de carregamento visual (spinner) foi adicionado.
+Para complementar a busca via OSM e fornecer uma forma de visualizar a localização no mapa. Um indicador de carregamento visual (spinner) foi adicionado.
 
-- **Frontend:** A função `displayNearbyStores` foi modificada para envolver o nome de cada loja em uma tag `<a>` com um `href` formatado para abrir uma busca no Google Maps com o nome e endereço da loja. Estilos CSS foram adicionados para os links. Um estilo CSS para um spinner de carregamento foi criado e a lógica JavaScript foi ajustada para adicionar/remover a classe `loading` (que controla o spinner) na área de feedback durante as chamadas ao backend. O texto do modal "Sobre" e o feedback foram novamente ajustados para explicar a abordagem de usar OSM e links para Google Maps.
+- **Frontend:** A função `displayNearbyStores` foi modificada para envolver o nome de cada loja em uma tag `<a>` com um `href` formatado para abrir uma busca OpenStreetMap com o nome e endereço da loja. Estilos CSS foram adicionados para os links. Um estilo CSS para um spinner de carregamento foi criado e a lógica JavaScript foi ajustada para adicionar/remover a classe `loading` (que controla o spinner) na área de feedback durante as chamadas ao backend. O texto do modal "Sobre" e o feedback foram novamente ajustados para explicar a abordagem de usar OSM e links para Google Maps.
     
 
 ## Estado Atual
 
-Atualmente, o EcoLook MVP é uma PWA funcional que permite escanear roupas, obter sugestões sustentáveis (baseadas em lógica interna) e buscar lojas próximas usando dados do OpenStreetMap (via Overpass API), fornecendo links diretos para visualização no Google Maps. O frontend oferece feedback sequencial e exibe o item detectado em uma seção separada.
+Atualmente, o EcoLook MVP é uma PWA funcional que permite escanear roupas, obter sugestões sustentáveis (baseadas em lógica interna) e buscar lojas próximas usando dados do OpenStreetMap (via Overpass API) e idealmente mostrar lojas próximas. O frontend oferece feedback sequencial e exibe o item detectado em uma seção separada.
 
 Este MVP serve como uma base sólida para futuras iterações, focando em refinar a precisão da busca de lojas (dependendo da completude dos dados OSM), melhorar as sugestões sustentáveis com dados mais ricos e potencialmente explorar a orquestração de ferramentas com Agentes Gemini em um backend mais complexo no futuro.
