@@ -7,86 +7,115 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <style>
         body {
-            font-family: sans-serif;
-            background-color: #f4f4f4;
+            font-family: 'Arial', sans-serif; /* Using a common sans-serif font */
+            background-color: #e0f2f7; /* Light blue background */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
-            margin: 0; /* Ensure no default body margin */
+            margin: 0;
         }
         .container {
-            background-color: #fff;
+            background-color: #ffffff; /* White background for container */
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            /* text-align: center; Removido para usar alinhamento flexbox */
+            border-radius: 15px; /* More rounded corners */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Stronger shadow */
             max-width: 500px;
             width: 100%;
-            display: flex; /* Torna o contêiner um flex container */
-            flex-direction: column; /* Empilha os itens filhos verticalmente */
-            align-items: center; /* Centraliza os itens filhos horizontalmente */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box; /* Include padding in width */
         }
-        #camera-feed {
+        h1 {
+            color: #00796b; /* Teal color for heading */
+            margin-bottom: 10px;
+            font-size: 1.8em; /* Slightly larger heading */
+        }
+         .intro-text {
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+        #camera-feed, #captured-image {
             width: 100%;
-            max-height: 300px;
+            max-height: 350px; /* Slightly increased max height */
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 10px; /* Rounded corners for media */
             margin-bottom: 20px;
-            background-color: #eee; /* Placeholder background */
+            background-color: #cfd8dc; /* Light grey placeholder */
+            border: 1px solid #b0bec5; /* Subtle border */
         }
-        #captured-image {
-            width: 100%;
-            max-height: 300px;
-            object-fit: contain;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none; /* Initially hidden */
-        }
+         #captured-image {
+             object-fit: contain; /* Use contain for captured image */
+         }
         button {
-            background-color: #4CAF50;
+            background-color: #00796b; /* Teal color for buttons */
             color: white;
-            padding: 12px 20px;
+            padding: 12px 24px; /* Increased padding */
             border: none;
-            border-radius: 5px;
+            border-radius: 25px; /* Pill-shaped buttons */
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            margin-top: 10px; /* Added margin */
+            font-size: 1em; /* Standard font size */
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            margin-top: 10px;
+            font-weight: bold; /* Bold text */
         }
-        button:hover {
-            background-color: #45a049;
+        button:hover:not(:disabled) {
+            background-color: #004d40; /* Darker teal on hover */
+            transform: translateY(-2px); /* Slight lift effect */
         }
+         button:active:not(:disabled) {
+             transform: translateY(0); /* Press down effect */
+         }
          button:disabled {
-            background-color: #ccc;
+            background-color: #b0bec5; /* Grey for disabled */
             cursor: not-allowed;
+            box-shadow: none;
         }
+         button#scan-another-btn {
+             background-color: #546e7a; /* Different color for scan another */
+         }
+         button#scan-another-btn:hover:not(:disabled) {
+             background-color: #37474f;
+         }
+
         #feedback {
             margin-top: 20px;
             font-style: italic;
             color: #555;
-            min-height: 1.2em; /* Reserve space to prevent layout shifts */
+            min-height: 1.5em; /* Increased min-height */
+            text-align: center; /* Center feedback text */
         }
         #results {
             margin-top: 30px;
             text-align: left;
-            width: 100%; /* Ensure results div takes full container width */
+            width: 100%;
+            border-top: 1px solid #cfd8dc; /* Separator line */
+            padding-top: 20px;
         }
         #results h3 {
-            margin-bottom: 10px;
-            color: #333;
+            margin-bottom: 15px;
+            color: #00796b; /* Teal color */
+            font-size: 1.2em;
+            text-align: center; /* Center results heading */
         }
         #results ul {
             list-style: none;
             padding: 0;
         }
         #results li {
-            background-color: #e9e9e9;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
+            background-color: #e0f2f7; /* Light blue for list items */
+            padding: 15px; /* Increased padding */
+            border-radius: 8px; /* Rounded corners for list items */
+            margin-bottom: 15px; /* Increased margin */
+            border: 1px solid #b2ebf2; /* Subtle border */
         }
+         #results li strong {
+             color: #004d40; /* Darker teal for store names */
+         }
         /* Basic Loading Indicator Style */
         .loading::after {
             content: ' .';
@@ -98,6 +127,20 @@
             60% { content: '...'; }
             80%, 100% { content: ''; } /* Optional: make it disappear briefly */
         }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
     </style>
 
     <link rel="manifest" href="/manifest.json">
@@ -107,19 +150,22 @@
     </head>
 <body>
     <div class="container">
-        <h1>EcoLook MVP</h1>
+        <h1>EcoLook</h1>
+        <p class="intro-text">Escaneie uma peça de roupa com a câmera do seu celular para descobrir alternativas sustentáveis e lojas próximas!</p>
+
         <video id="camera-feed" autoplay playsinline></video>
         <img id="captured-image" alt="Foto da roupa capturada">
-        <button id="capture-btn">Escanear Roupa</button>
-        <button id="scan-another-btn" style="display: none;">Escanear Outra Roupa</button>
+
+        <button id="capture-btn" aria-label="Escanear Roupa">Escanear Roupa</button>
+        <button id="scan-another-btn" style="display: none;" aria-label="Escanear Outra Roupa">Escanear Outra Roupa</button>
 
 
-        <div id="feedback"></div>
+        <div id="feedback" role="status" aria-live="polite"></div>
 
         <div id="results" style="display: none;">
-            <h3>Alternativa Sustentável Sugerida:</h3>
+            <h3>Resultados</h3>
             <p id="sustainable-suggestion"></p>
-            <h3>Lojas Próximas:</h3>
+            <h3 class="mt-4">Lojas Próximas:</h3>
             <ul id="nearby-stores-list">
                 </ul>
         </div>
