@@ -42,7 +42,7 @@
             line-height: 1.5;
             text-align: center;
         }
-        #camera-feed, #captured-image {
+        #camera-feed, #captured-image, #camera-placeholder { /* Added #camera-placeholder */
             width: 100%;
             max-height: 350px; /* Slightly increased max height */
             object-fit: cover;
@@ -50,10 +50,23 @@
             margin-bottom: 20px;
             background-color: #cfd8dc; /* Light grey placeholder */
             border: 1px solid #b0bec5; /* Subtle border */
+            display: flex; /* Use flex for placeholder to center content */
+            justify-content: center;
+            align-items: center;
+            font-size: 3em; /* Size for icon/text */
+            color: #546e7a; /* Color for icon/text */
         }
          #captured-image {
              object-fit: contain; /* Use contain for captured image */
          }
+         #camera-placeholder {
+             /* Initial state is visible */
+             display: flex; /* Show placeholder initially */
+         }
+         #camera-feed, #captured-image {
+             display: none; /* Hide camera feed and captured image initially */
+         }
+
         button {
             background-color: #00796b; /* Teal color for buttons */
             color: white;
@@ -224,6 +237,10 @@
         <h1>EcoLook</h1>
         <p class="intro-text">Escaneie uma peça de roupa com a câmera do seu celular para descobrir alternativas sustentáveis e lojas próximas!</p>
 
+        <div id="camera-placeholder">
+            📸
+        </div>
+
         <video id="camera-feed" autoplay playsinline></video>
         <img id="captured-image" alt="Foto da roupa capturada">
 
@@ -262,16 +279,20 @@
 
 
     <script>
+        // --- Configuração do Backend ---
+        // URL do seu backend FastAPI. Se estiver rodando localmente, use o endereço e porta corretos.
+        // Exemplo: http://127.0.0.1:8000 se estiver rodando com `uvicorn main:app --reload` na porta 8000
+        const BACKEND_URL = 'http://127.0.0.1:8000'; // <-- Atualize esta URL conforme onde seu backend estiver rodando
+
         // --- Gerenciamento de Chaves de API (ATENÇÃO: RISCO DE SEGURANÇA NO FRONTEND) ---
-        // EM UM AMBIENTE DE PRODUÇÃO REAL, ESTA CHAVE DEVE SER GERENCIADA EM UM BACKEND SEGURO.
-        // NUNCA EXPONHA SUAS CHAVES DE API DIRETAMENTE NO CÓDIGO CLIENT-SIDE.
-        // Substitua 'SUA_CHAVE_GOOGLE_AQUI' pela chave do seu arquivo .env para testes LOCAIS/MVP.
-        const GOOGLE_API_KEY = 'SUA_CHAVE_GOOGLE_AQUI'; // <-- Substitua aqui para testar
-        // Modelo Gemini atualizado conforme solicitado
-        const GEMINI_MODEL = 'gemini-2.0-flash';
+        // A chave de API do Google NÃO é mais usada diretamente no frontend.
+        // Ela é gerenciada de forma segura no backend.
+        // const GOOGLE_API_KEY = 'SUA_CHAVE_GOOGLE_AQUI'; // REMOVIDO DO FRONTEND
+        // const GEMINI_MODEL = 'gemini-2.0-flash'; // REMOVIDO DO FRONTEND
 
         const cameraFeed = document.getElementById('camera-feed');
         const capturedImage = document.getElementById('captured-image');
+        const cameraPlaceholder = document.getElementById('camera-placeholder'); // Novo elemento placeholder
         const captureBtn = document.getElementById('capture-btn');
         const scanAnotherBtn = document.getElementById('scan-another-btn'); // Novo botão
         const aboutBtn = document.getElementById('about-btn'); // Botão "Sobre"
@@ -305,6 +326,10 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 feedbackDiv.textContent = 'Seu navegador não suporta acesso à câmera.';
                 console.error('API navigator.mediaDevices.getUserMedia não disponível.');
+                cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
+                cameraPlaceholder.textContent = '🚫'; // Ícone de erro
+                captureBtn.style.display = 'none'; // Esconde o botão de captura
+                scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                 return;
             }
 
@@ -312,32 +337,45 @@
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                  feedbackDiv.innerHTML = 'O acesso à câmera requer um ambiente seguro (HTTPS) ou localhost.<br>Por favor, execute em um servidor web.';
                  console.error('Acesso à câmera bloqueado em ambiente não seguro.');
+                 cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
+                 cameraPlaceholder.textContent = '🔒'; // Ícone de cadeado
+                 captureBtn.style.display = 'none'; // Esconde o botão de captura
+                 scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                  return;
             }
 
 
             try {
                 feedbackDiv.textContent = 'Solicitando acesso à câmera...';
+                cameraPlaceholder.style.display = 'none'; // Esconde placeholder ao tentar iniciar câmera
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 cameraFeed.srcObject = stream;
                 currentStream = stream;
-                cameraFeed.style.display = 'block';
-                capturedImage.style.display = 'none';
+                cameraFeed.style.display = 'block'; // Mostra o feed da câmera
+                capturedImage.style.display = 'none'; // Esconde a imagem capturada
                 captureBtn.style.display = 'block'; // Mostra o botão de captura
                 scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra
                 feedbackDiv.textContent = 'Posicione a roupa na frente da câmera.';
                 resultsDiv.style.display = 'none';
             } catch (err) {
                 console.error("Erro ao acessar a câmera:", err);
+                cameraPlaceholder.style.display = 'flex'; // Mostra placeholder em caso de erro
+                cameraFeed.style.display = 'none'; // Esconde feed da câmera
+                capturedImage.style.display = 'none'; // Esconde imagem capturada
+
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
                     feedbackDiv.textContent = 'Permissão da câmera negada. Por favor, permita o acesso nas configurações do navegador.';
+                     cameraPlaceholder.textContent = '✋'; // Ícone de mão
                 } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
                      feedbackDiv.textContent = 'Nenhuma câmera encontrada no dispositivo.';
+                     cameraPlaceholder.textContent = '❓'; // Ícone de interrogação
                 } else if (err.name === 'NotReadableError' || err.name === 'OverconstrainedError') {
                      feedbackDiv.textContent = 'A câmera está em uso ou houve um problema ao acessá-la.';
+                     cameraPlaceholder.textContent = '⚠️'; // Ícone de aviso
                 }
                 else {
                     feedbackDiv.textContent = `Erro ao acessar a câmera: ${err.message}`;
+                    cameraPlaceholder.textContent = '❌'; // Ícone de erro
                 }
                  captureBtn.style.display = 'none'; // Esconde o botão de captura se a câmera falhar
                  scanAnotherBtn.style.display = 'block'; // Mostra o botão de tentar novamente (escanear outra)
@@ -372,74 +410,92 @@
             context.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
             const imageDataUrl = canvas.toDataURL('image/png');
 
-            // Exibir a imagem capturada
+            // Esconde o feed da câmera e o placeholder, exibe a imagem capturada
+            cameraFeed.style.display = 'none';
+            cameraPlaceholder.style.display = 'none';
             capturedImage.src = imageDataUrl;
             capturedImage.style.display = 'block';
-            cameraFeed.style.display = 'none';
+
             captureBtn.style.display = 'none'; // Esconde o botão de captura
             scanAnotherBtn.style.display = 'none'; // Esconde o botão de escanear outra temporariamente
 
 
-            feedbackDiv.textContent = 'Analisando sua roupa...';
+            feedbackDiv.textContent = 'Enviando para análise...';
             resultsDiv.style.display = 'none';
             nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
 
-
-            // --- Integração com Gemini Vision ---
-            const identifiedClothing = await analyzeImageWithGemini(imageDataUrl, GOOGLE_API_KEY, GEMINI_MODEL);
-            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugerindo alternativas sustentáveis...`;
-
-
-            // --- Sugestão Sustentável ---
-            const sustainableSuggestion = suggestSustainableAlternative(identifiedClothing);
-            sustainableSuggestionP.textContent = sustainableSuggestion;
-
-            feedbackDiv.textContent = 'Buscando lojas próximas...';
-
-
-            // --- Integração com Google Maps (Obtendo localização real e usando dados mock) ---
-            // Sua ideia de usar um Agente Gemini com uma ferramenta Maps é o caminho ideal para uma versão real (requer backend).
-            // Para este MVP gratuito e frontend-only, usaremos dados mock para as lojas próximas.
+            // --- Obter Localização do Usuário ---
+            // Obtemos a localização no frontend e a enviamos para o backend.
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     const userLocation = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude
                     };
-                    // Usando a função mock para buscar lojas
-                    const nearbyStores = await searchNearbyStoresMock(identifiedClothing, userLocation);
-                    feedbackDiv.textContent = 'Resultados encontrados (dados simulados):'; // Indicando que são dados mock
-                    resultsDiv.style.display = 'block';
-                    displayNearbyStores(nearbyStores);
-                     feedbackDiv.classList.remove('loading'); // Remove loading após resultados
-                     scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
+
+                    feedbackDiv.textContent = 'Enviando imagem e localização para o backend...';
+
+                    // --- Chamar o Backend para Análise e Busca ---
+                    try {
+                        const formData = new FormData();
+                        formData.append('imageDataUrl', imageDataUrl);
+                        formData.append('userLocation', JSON.stringify(userLocation)); // Envia localização como string JSON
+
+                        const response = await fetch(`${BACKEND_URL}/analyze_and_find_stores`, {
+                            method: 'POST',
+                            body: formData // Usa FormData para enviar string base64 e JSON
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            // Trata erros retornados pelo backend (HTTPException)
+                            console.error("Erro do Backend:", response.status, result);
+                            feedbackDiv.textContent = `Erro: ${result.detail || 'Erro desconhecido do backend.'}`;
+                            resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
+                        } else {
+                            // Processa a resposta de sucesso do backend
+                            console.log("Resposta do Backend:", result);
+
+                            const identifiedClothing = result.identifiedClothing;
+                            const sustainableSuggestion = result.sustainableSuggestion;
+                            const nearbyStores = result.nearbyStores; // Recebe os dados mock do backend
+
+                            feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugerindo alternativas sustentáveis...`;
+                            sustainableSuggestionP.textContent = sustainableSuggestion;
+
+                            feedbackDiv.textContent += ' Lojas próximas encontradas (dados simulados):';
+                            resultsDiv.style.display = 'block';
+                            displayNearbyStores(nearbyStores);
+                        }
+
+                    } catch (error) {
+                        console.error("Erro na comunicação com o backend:", error);
+                        feedbackDiv.textContent = `Erro de comunicação com o servidor: ${error.message}`;
+                         resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
+                    } finally {
+                        feedbackDiv.classList.remove('loading'); // Remove loading após a resposta (sucesso ou erro)
+                        scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
+                        captureBtn.disabled = false; // Reabilita o botão de captura (se ele for mostrado novamente)
+                    }
 
                 }, (error) => {
                     console.error("Erro ao obter localização:", error);
-                    feedbackDiv.textContent = 'Erro ao obter sua localização real para buscar lojas próximas. Exibindo resultados mock.';
-                    resultsDiv.style.display = 'block';
-                    nearbyStoresListUl.innerHTML = '<li>Não foi possível obter sua localização real. Exibindo dados simulados.</li>';
-                     // Fallback para dados mock se a geolocalização falhar
-                     searchNearbyStoresMock(identifiedClothing, { lat: -22.2572, lng: -42.5322 }).then(mockStores => {
-                         displayNearbyStores(mockStores);
-                         feedbackDiv.classList.remove('loading'); // Remove loading após fallback
-                         scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
-                     });
+                    feedbackDiv.textContent = 'Erro ao obter sua localização real para buscar lojas próximas. Não foi possível contatar o backend.';
+                    resultsDiv.style.display = 'none';
+                    nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+                    feedbackDiv.classList.remove('loading'); // Remove loading em caso de erro de geolocalização
+                    scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
+                    captureBtn.disabled = false; // Reabilita o botão de captura
                 });
             } else {
-                feedbackDiv.textContent = 'Geolocalização não suportada neste navegador. Exibindo resultados mock.';
-                 resultsDiv.style.display = 'block';
-                 nearbyStoresListUl.innerHTML = '<li>Geolocalização não suportada neste navegador. Exibindo dados simulados.</li>';
-                 // Fallback para dados mock se a geolocalização não for suportada
-                 searchNearbyStoresMock(identifiedClothing, { lat: -22.2572, lng: -42.5322 }).then(mockStores => {
-                     displayNearbyStores(mockStores);
-                     feedbackDiv.classList.remove('loading'); // Remove loading após fallback
-                     scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
-                 });
+                feedbackDiv.textContent = 'Geolocalização não suportada neste navegador. Não foi possível contatar o backend.';
+                 resultsDiv.style.display = 'none';
+                 nearbyStoresListUl.innerHTML = ''; // Limpa resultados anteriores
+                 feedbackDiv.classList.remove('loading'); // Remove loading em caso de geolocalização não suportada
+                 scanAnotherBtn.style.display = 'block'; // Mostra o botão de escanear outra
+                 captureBtn.disabled = false; // Reabilita o botão de captura
             }
-
-             captureBtn.disabled = false; // Reabilita o botão de captura (se ele for mostrado novamente)
-
         });
 
         // Event listener para o botão "Escanear Outra Roupa"
@@ -466,109 +522,11 @@
         });
 
 
-        // --- Funções para Integração com APIs ---
-
-        // Função para analisar imagem com Gemini Vision
-        // ATENÇÃO: Para produção, esta chamada deve ser feita por um BACKEND SEGURO.
-        async function analyzeImageWithGemini(imageDataUrl, apiKey, model) {
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [
-                            {
-                                parts: [
-                                    { text: "Descreva a peça de roupa nesta imagem em poucas palavras, focando no tipo e cor principal. Ex: 'camiseta azul', 'calça jeans preta'. Se não for uma peça de roupa, diga 'Não é uma peça de roupa'." },
-                                    { inline_data: { mime_type: 'image/png', data: imageDataUrl.split(',')[1] } } // Extrai base64 da URL
-                                ]
-                            }
-                        ]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error("Erro na API Gemini Vision:", response.status, errorData);
-                    return "Não foi possível analisar a roupa."; // Retorna mensagem de erro
-                }
-
-                const data = await response.json();
-                console.log("Resposta Gemini Vision:", data);
-
-                // Processar a resposta para extrair o tipo de peça
-                // A estrutura da resposta pode variar, ajuste conforme necessário
-                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
-                     const textResult = data.candidates[0].content.parts[0].text.trim();
-                     if (textResult === "Não é uma peça de roupa") {
-                         return "Não foi identificado uma peça de roupa na imagem.";
-                     }
-                     return textResult;
-                } else {
-                     console.warn("Resposta inesperada da API Gemini Vision:", data);
-                     return "Não foi possível identificar a peça.";
-                }
-
-            } catch (error) {
-                console.error("Erro na chamada fetch para Gemini Vision:", error);
-                return "Erro de comunicação com a API de análise.";
-            }
-        }
-
-        // Função para sugerir alternativa sustentável
-        function suggestSustainableAlternative(clothingType) {
-            // Lógica simples para sugerir alternativas baseadas no tipo de peça
-            // Esta lógica pode ser expandida ou até mesmo usar o Gemini para sugestões mais criativas
-             if (clothingType.includes("Não foi identificado") || clothingType.includes("Erro")) {
-                 return "Não foi possível sugerir uma alternativa sustentável sem identificar a peça.";
-             }
-            if (clothingType.includes("camiseta")) {
-                return "Considere camisetas de algodão orgânico ou reciclado.";
-            } else if (clothingType.includes("calça jeans")) {
-                return "Procure por jeans reciclados ou de algodão com menor uso de água.";
-            } else if (clothingType.includes("vestido")) {
-                return "Alternativas incluem vestidos de linho, cânhamo ou materiais reciclados.";
-            } else if (clothingType.includes("jaqueta")) {
-                 return "Busque jaquetas de materiais reciclados ou de segunda mão.";
-            }
-            else {
-                return "Busque por opções feitas com materiais sustentáveis ou de segunda mão.";
-            }
-        }
-
-        // Função MOCK para buscar lojas próximas (Substitui a chamada da API Places para o MVP gratuito)
-        // Em uma aplicação real, esta função faria a chamada para uma API de busca de locais (paga, como Google Places,
-        // ou via backend com dados de fontes gratuitas como OpenStreetMap - mais complexo),
-        // IDEALMENTE orquestrada por um Agente Gemini com a ferramenta Maps em um BACKEND SEGURO.
-        async function searchNearbyStoresMock(clothingType, location) {
-            console.log(`Simulando busca de lojas próximas para "${clothingType}" na localização:`, location);
-            // Simulação de delay para imitar uma chamada de API
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Dados mock de lojas próximas
-            const mockStores = [
-                { name: "Brechó da Esquina (Mock)", address: "Rua Simulada A, 123", distance: "500m" },
-                { name: "Loja Sustentável Verde (Mock)", address: "Av. Simulada B, 456", distance: "1.2km" },
-                { name: "Second Hand Fashion (Mock)", address: "Centro Comercial Simulado, Loja 7", distance: "2.5km" },
-                 { name: "Eco Moda Brechó (Mock)", address: "Travessa Simulada C, 10", distance: "800m" }
-            ];
-
-            // Simula um caso onde nenhum resultado é encontrado ocasionalmente
-            // if (Math.random() > 0.7) {
-            //     return [];
-            // }
-
-            return mockStores; // Retorna lista de lojas mock
-        }
-
+        // --- Funções Auxiliares (Busca Mock agora no Backend) ---
 
         // Função para exibir a lista de lojas
         function displayNearbyStores(stores) {
-            if (stores.length === 0) {
+            if (!stores || stores.length === 0) { // Verifica se a lista de stores é válida e não vazia
                 nearbyStoresListUl.innerHTML = '<li>Nenhuma loja sustentável ou brechó encontrado próximo.</li>';
                 return;
             }
