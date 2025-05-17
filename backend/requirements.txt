@@ -1,0 +1,31 @@
+# Dependências principais
+fastapi==0.104.1
+uvicorn==0.23.2
+python-dotenv==1.0.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Banco de Dados
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+
+# Validação de Dados
+pydantic==2.5.2
+pydantic-settings==2.0.3
+
+# Testes
+pytest==7.4.3
+pytest-cov==4.1.0
+httpx==0.25.1
+
+# Ferramentas de Desenvolvimento
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+mypy==1.6.1
+
+# Documentação
+fastapi-pagination==0.12.10
+python-multipart==0.0.6
