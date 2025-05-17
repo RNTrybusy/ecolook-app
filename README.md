@@ -16,7 +16,7 @@ Este projeto serve como uma prova de conceito para demonstrar a integração de 
     
 - **Busca de Lojas Próximas:** Encontre lojas de moda sustentável ou brechós próximos à sua localização, utilizando dados do OpenStreetMap via Overpass API.
     
-- **Links para Google Maps:** Clique no nome das lojas encontradas para abrir a localização diretamente no Google Maps.
+- // Standby - **Links para Google Maps:** Clique no nome das lojas encontradas para abrir a localização diretamente no Google Maps. //
     
 - **PWA:** Instale o aplicativo na tela inicial do seu dispositivo para acesso rápido.
     
@@ -109,7 +109,7 @@ Este projeto consiste em duas partes principais: o frontend (uma PWA estática) 
     
 5. Aguarde enquanto a imagem é capturada, a localização é obtida, e os dados são enviados para o backend para análise e busca.
     
-6. Visualize o item detectado, a sugestão sustentável e a lista de lojas próximas (com links para o Google Maps).
+6. Visualize o item detectado, a sugestão sustentável e a lista de lojas próximas.
     
 7. Clique em "Escanear Outra Roupa" ou "Limpar Resultados" para reiniciar.
     
