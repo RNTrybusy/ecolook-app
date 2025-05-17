@@ -166,12 +166,6 @@
             font-size: 1.2em;
             text-align: center; /* Center results heading */
         }
-         .mock-data-indicator { /* Style for mock data indicator */
-             font-size: 0.9em;
-             color: #757575;
-             text-align: center;
-             margin-bottom: 10px;
-         }
         #results ul {
             list-style: none;
             padding: 0;
@@ -186,6 +180,15 @@
          #results li strong {
              color: #004d40; /* Darker teal for store names */
          }
+         #results li a { /* Style for the new links */
+             color: #00796b; /* Teal color for links */
+             text-decoration: none; /* No underline by default */
+             font-weight: bold; /* Keep bold */
+         }
+         #results li a:hover {
+             text-decoration: underline; /* Underline on hover */
+         }
+
         /* Basic Loading Indicator Style */
         .loading::after {
             content: ' .';
@@ -196,6 +199,24 @@
             40% { content: '..'; }
             60% { content: '...'; }
             80%, 100% { content: ''; } /* Optional: make it disappear briefly */
+        }
+
+        /* Spinner Loading Indicator */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #00796b; /* Teal color */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block; /* Shows spinner next to text */
+            vertical-align: middle; /* Aligns spinner vertically with text */
+            margin-left: 8px; /* Space between text and spinner */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Modal Styles */
@@ -265,7 +286,7 @@
 
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="EcoLook">
     </head>
 <body>
@@ -298,15 +319,14 @@
             <h3>Resultados</h3>
             <p id="sustainable-suggestion"></p>
             <h3 class="mt-4">Lojas Próximas:</h3>
-             <p class="mock-data-indicator">(Dados simulados para MVP)</p>
-            <ul id="nearby-stores-list">
+             <ul id="nearby-stores-list">
                 </ul>
         </div>
     </div>
 
     <div id="about-modal" class="modal">
       <div class="modal-content">
-        <span class="close-button" id="close-modal-btn">&times;</span>
+        <span class="close-button" id="close-modal-btn">×</span>
         <h2>Sobre o EcoLook MVP</h2>
         <p>Este é um MVP (Minimum Viable Product) do EcoLook, um aplicativo para ajudar você a encontrar alternativas de moda mais sustentável.</p>
         <p><strong>Como funciona:</strong></p>
@@ -314,9 +334,9 @@
             <li>Use a câmera para escanear uma peça de roupa.</li>
             <li>O aplicativo (usando Google Gemini) tentará identificar o tipo de peça.</li>
             <li>Sugeriremos um tipo de alternativa sustentável para essa peça.</li>
-            <li>Buscaremos (simuladamente neste MVP) lojas de moda sustentável ou brechós próximos à sua localização.</li>
+            <li>Buscaremos lojas de moda sustentável ou brechós próximos à sua localização e forneceremos links para visualizá-las no Google Maps.</li>
         </ol>
-        <p class="mt-4 text-sm text-gray-600"><strong>Nota sobre a busca de lojas:</strong> Neste MVP, a lista de lojas próximas é simulada devido a limitações de APIs gratuitas para busca de negócios específicos. Em uma versão completa, usaríamos APIs pagas (como Google Places) ou uma solução de backend mais complexa para fornecer resultados reais e precisos.</p>
+        <p class="mt-4 text-sm text-gray-600"><strong>Nota sobre a busca de lojas:</strong> A busca inicial por lojas é realizada no backend, mas para evitar custos de API de exibição de dados, o aplicativo fornece links diretos para o Google Maps, onde você pode ver os detalhes e a localização exata.</p>
          <p class="mt-2 text-sm text-gray-600">Desenvolvido com ❤️ e IA.</p>
       </div>
     </div>
@@ -538,7 +558,7 @@
                             await new Promise(resolve => setTimeout(resolve, 1000));
 
                              if (nearbyStores && nearbyStores.length > 0) {
-                                feedbackDiv.textContent = 'Lojas encontradas:'; // Feedback final antes de exibir a lista
+                                feedbackDiv.textContent = 'Lojas encontradas (clique no nome para ver no mapa):'; // Feedback final antes de exibir a lista
                                 resultsDiv.style.display = 'block';
                                 displayNearbyStores(nearbyStores);
                              } else {
@@ -643,7 +663,12 @@
             nearbyStoresListUl.innerHTML = ''; // Limpa a lista antes de adicionar novos itens
             stores.forEach(store => {
                 const li = document.createElement('li');
-                li.innerHTML = `<strong>${store.name}</strong><br>${store.address}<br>(${store.distance})`;
+                // Cria um link para o Google Maps com o nome e endereço da loja
+                // Usando o formato padrão da URL de busca do Google Maps
+                const mapSearchQuery = encodeURIComponent(`${store.name} ${store.address}`);
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${mapSearchQuery}`;
+
+                li.innerHTML = `<strong><a href="${mapLink}" target="_blank">${store.name}</a></strong><br>${store.address}<br>(${store.distance})`;
                 nearbyStoresListUl.appendChild(li);
             });
         }
