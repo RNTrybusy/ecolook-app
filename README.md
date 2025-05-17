@@ -2,7 +2,7 @@
 
 ## Visão Geral do Projeto
 
-O EcoLook é um aplicativo que visa ajudar usuários a encontrar alternativas de moda mais sustentável e lojas próximas que vendem roupas ecológicas ou de segunda mão. Utilizando a câmera do celular, o aplicativo escaneia uma peça de roupa, identifica o tipo de peça com a ajuda da inteligência artificial (Google Gemini Vision), sugere uma alternativa sustentável e busca lojas próximas usando dados do OpenStreetMap.
+O EcoLook é um aplicativo que visa ajudar usuários a encontrar alternativas de moda mais sustentável e lojas próximas que vendem roupas ecológicas ou de segunda mão, como brechós. Utilizando-se da câmera de celular ou do computador, o aplicativo pode escanear uma peça de roupa, identificar o tipo de peça com a ajuda da inteligência artificial (Google Gemini Vision), sugerir uma alternativa sustentável e buscar lojas próximas usando dados do OpenStreetMap.
 
 Este projeto serve como uma prova de conceito para demonstrar a integração de IA de visão computacional, geolocalização e busca de dados de mapas em uma aplicação web progressiva.
 
@@ -15,10 +15,6 @@ Este projeto serve como uma prova de conceito para demonstrar a integração de 
 - **Sugestão Sustentável:** Receba uma sugestão de alternativa de material ou prática sustentável relacionada à peça identificada.
     
 - **Busca de Lojas Próximas:** Encontre lojas de moda sustentável ou brechós próximos à sua localização, utilizando dados do OpenStreetMap via Overpass API.
-    
-- **Links para Google Maps:** Clique no nome das lojas encontradas para abrir a localização diretamente no Google Maps.
-    
-- **PWA:** Instale o aplicativo na tela inicial do seu dispositivo para acesso rápido.
     
 - **Modal "Sobre":** Informações sobre o aplicativo e suas funcionalidades (incluindo a nota sobre a busca de lojas via OSM).
     
