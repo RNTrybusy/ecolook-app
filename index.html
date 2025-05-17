@@ -15,6 +15,7 @@
             min-height: 100vh;
             padding: 20px;
             margin: 0;
+            overflow-y: auto; /* Allow scrolling if content overflows */
         }
         .container {
             background-color: #ffffff; /* White background for container */
@@ -27,6 +28,7 @@
             flex-direction: column;
             align-items: center;
             box-sizing: border-box; /* Include padding in width */
+            position: relative; /* Needed for absolute positioning of about button */
         }
         h1 {
             color: #00796b; /* Teal color for heading */
@@ -38,6 +40,7 @@
             margin-bottom: 20px;
             font-size: 1em;
             line-height: 1.5;
+            text-align: center;
         }
         #camera-feed, #captured-image {
             width: 100%;
@@ -81,6 +84,24 @@
          button#scan-another-btn:hover:not(:disabled) {
              background-color: #37474f;
          }
+         button#about-btn {
+             position: absolute;
+             top: 15px;
+             right: 15px;
+             background: none;
+             border: none;
+             color: #00796b;
+             font-size: 1.5em;
+             cursor: pointer;
+             padding: 5px;
+             margin: 0;
+             transition: color 0.3s ease;
+         }
+         button#about-btn:hover {
+             color: #004d40;
+             transform: none; /* Override button hover effect */
+         }
+
 
         #feedback {
             margin-top: 20px;
@@ -128,6 +149,49 @@
             80%, 100% { content: ''; } /* Optional: make it disappear briefly */
         }
 
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 90%; /* Responsive width */
+            width: 400px; /* Max width */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 600px) {
             .container {
@@ -140,6 +204,13 @@
                 padding: 10px 20px;
                 font-size: 0.9em;
             }
+             .modal-content {
+                 padding: 20px;
+             }
+             .close-button {
+                 font-size: 24px;
+                 right: 10px;
+             }
         }
     </style>
 
@@ -159,6 +230,7 @@
         <button id="capture-btn" aria-label="Escanear Roupa">Escanear Roupa</button>
         <button id="scan-another-btn" style="display: none;" aria-label="Escanear Outra Roupa">Escanear Outra Roupa</button>
 
+        <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
 
         <div id="feedback" role="status" aria-live="polite"></div>
 
@@ -171,12 +243,30 @@
         </div>
     </div>
 
+    <div id="about-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-button" id="close-modal-btn">&times;</span>
+        <h2>Sobre o EcoLook MVP</h2>
+        <p>Este é um MVP (Minimum Viable Product) do EcoLook, um aplicativo para ajudar você a encontrar alternativas de moda mais sustentável.</p>
+        <p><strong>Como funciona:</strong></p>
+        <ol class="list-decimal list-inside">
+            <li>Use a câmera para escanear uma peça de roupa.</li>
+            <li>O aplicativo (usando Google Gemini) tentará identificar o tipo de peça.</li>
+            <li>Sugeriremos um tipo de alternativa sustentável para essa peça.</li>
+            <li>Buscaremos (simuladamente neste MVP) lojas de moda sustentável ou brechós próximos à sua localização.</li>
+        </ol>
+        <p class="mt-4 text-sm text-gray-600"><strong>Nota sobre a busca de lojas:</strong> Neste MVP, a lista de lojas próximas é simulada devido a limitações de APIs gratuitas para busca de negócios específicos. Em uma versão completa, usaríamos APIs pagas (como Google Places) ou uma solução de backend mais complexa para fornecer resultados reais e precisos.</p>
+         <p class="mt-2 text-sm text-gray-600">Desenvolvido com ❤️ e IA.</p>
+      </div>
+    </div>
+
+
     <script>
         // --- Gerenciamento de Chaves de API (ATENÇÃO: RISCO DE SEGURANÇA NO FRONTEND) ---
         // EM UM AMBIENTE DE PRODUÇÃO REAL, ESTA CHAVE DEVE SER GERENCIADA EM UM BACKEND SEGURO.
         // NUNCA EXPONHA SUAS CHAVES DE API DIRETAMENTE NO CÓDIGO CLIENT-SIDE.
         // Substitua 'SUA_CHAVE_GOOGLE_AQUI' pela chave do seu arquivo .env para testes LOCAIS/MVP.
-        const GOOGLE_API_KEY = 'AIzaSyCDpVVW1SkRf2obTuRzkCEbedjNJPKZp_8'; // <-- Substitua aqui para testar
+        const GOOGLE_API_KEY = 'SUA_CHAVE_GOOGLE_AQUI'; // <-- Substitua aqui para testar
         // Modelo Gemini atualizado conforme solicitado
         const GEMINI_MODEL = 'gemini-2.0-flash';
 
@@ -184,10 +274,14 @@
         const capturedImage = document.getElementById('captured-image');
         const captureBtn = document.getElementById('capture-btn');
         const scanAnotherBtn = document.getElementById('scan-another-btn'); // Novo botão
+        const aboutBtn = document.getElementById('about-btn'); // Botão "Sobre"
         const feedbackDiv = document.getElementById('feedback');
         const resultsDiv = document.getElementById('results');
         const sustainableSuggestionP = document.getElementById('sustainable-suggestion');
         const nearbyStoresListUl = document.getElementById('nearby-stores-list');
+        const aboutModal = document.getElementById('about-modal'); // O Modal
+        const closeModalBtn = document.getElementById('close-modal-btn'); // Botão fechar modal
+
         let currentStream;
 
         // --- Registro do Service Worker (para PWA) ---
@@ -351,6 +445,24 @@
         // Event listener para o botão "Escanear Outra Roupa"
         scanAnotherBtn.addEventListener('click', () => {
             startCamera(); // Reinicia o fluxo iniciando a câmera
+        });
+
+        // --- Lógica do Modal "Sobre" ---
+        // Event listener para abrir o modal
+        aboutBtn.addEventListener('click', () => {
+            aboutModal.style.display = 'flex'; // Usa flex para centralizar o conteúdo
+        });
+
+        // Event listener para fechar o modal clicando no X
+        closeModalBtn.addEventListener('click', () => {
+            aboutModal.style.display = 'none';
+        });
+
+        // Event listener para fechar o modal clicando fora dele
+        window.addEventListener('click', (event) => {
+            if (event.target === aboutModal) {
+                aboutModal.style.display = 'none';
+            }
         });
 
 
