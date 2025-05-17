@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoLook MVP</title>
-    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
     <style>
         body {
             font-family: 'Arial', sans-serif; /* Using a common sans-serif font */
@@ -120,6 +120,23 @@
              transition: color 0.3s ease;
          }
          button#about-btn:hover {
+             color: #004d40;
+             transform: none; /* Override button hover effect */
+         }
+          button#api-key-info-btn { /* Style for the new API Key Info button */
+             position: absolute;
+             top: 15px;
+             left: 15px;
+             background: none;
+             border: none;
+             color: #00796b;
+             font-size: 1.5em;
+             cursor: pointer;
+             padding: 5px;
+             margin: 0;
+             transition: color 0.3s ease;
+         }
+         button#api-key-info-btn:hover {
              color: #004d40;
              transform: none; /* Override button hover effect */
          }
@@ -308,8 +325,7 @@
 
 
         <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
-
-        <div id="feedback" role="status" aria-live="polite"></div>
+         <button id="api-key-info-btn" aria-label="Informações sobre a API Key">🔑</button> <div id="feedback" role="status" aria-live="polite"></div>
 
         <div id="identified-item-section">
             <h3>Item Detectado:</h3>
@@ -342,6 +358,18 @@
       </div>
     </div>
 
+     <div id="api-key-info-modal" class="modal">
+       <div class="modal-content">
+         <span class="close-button" id="close-api-key-modal-btn">×</span>
+         <h2>Configuração da API Key</h2>
+         <p>Este aplicativo utiliza a Google API Key no **backend** para a análise de imagem com o Google Gemini.</p>
+         <p class="mt-4"><strong>Para que o aplicativo funcione, você precisa configurar a sua Google API Key no arquivo <code>.env</code> na raiz do diretório do backend.</strong></p>
+         <p class="mt-2">Exemplo do conteúdo do arquivo <code>.env</code>:</p>
+         <pre class="bg-gray-100 p-2 rounded text-sm overflow-x-auto"><code>GOOGLE_API_KEY='SUA_CHAVE_DE_API_AQUI'</code></pre>
+         <p class="mt-4 text-sm text-gray-600">Manter a API Key no backend (variáveis de ambiente ou arquivo .env) é essencial para a segurança, evitando que ela seja exposta no código do frontend ou nas requisições do navegador.</p>
+       </div>
+     </div>
+
 
     <script>
         // --- Configuração do Backend ---
@@ -356,14 +384,17 @@
         const scanAnotherBtn = document.getElementById('scan-another-btn'); // Novo botão
         const clearResultsBtn = document.getElementById('clear-results-btn'); // Novo botão Limpar Resultados
         const aboutBtn = document.getElementById('about-btn'); // Botão "Sobre"
+        const apiKeyInfoBtn = document.getElementById('api-key-info-btn'); // Novo botão API Key Info
         const feedbackDiv = document.getElementById('feedback');
         const resultsDiv = document.getElementById('results');
         const sustainableSuggestionP = document.getElementById('sustainable-suggestion');
         const nearbyStoresListUl = document.getElementById('nearby-stores-list');
-        const aboutModal = document.getElementById('about-modal'); // O Modal
-        const closeModalBtn = document.getElementById('close-modal-btn'); // Botão fechar modal
+        const aboutModal = document.getElementById('about-modal'); // O Modal Sobre
+        const closeModalBtn = document.getElementById('close-modal-btn'); // Botão fechar modal Sobre
         const identifiedItemSection = document.getElementById('identified-item-section'); // Nova seção Item Detectado
         const identifiedClothingText = document.getElementById('identified-clothing-text'); // Parágrafo para o texto do item detectado
+        const apiKeyInfoModal = document.getElementById('api-key-info-modal'); // O Modal API Key Info
+        const closeApiKeyModalBtn = document.getElementById('close-api-key-modal-btn'); // Botão fechar modal API Key Info
 
 
         let currentStream;
@@ -532,6 +563,14 @@
                             feedbackDiv.textContent = `Erro: ${result.detail || 'Erro desconhecido do backend.'}`;
                             identifiedItemSection.style.display = 'none'; // Garante que a seção não seja exibida em caso de erro
                             resultsDiv.style.display = 'none'; // Garante que resultados não sejam exibidos em caso de erro
+
+                            // Verifica se o erro é relacionado à API Key (status 401 ou 500 com mensagem específica)
+                            if (response.status === 401 || (response.status === 500 && result.detail && result.detail.includes("API Key do Google não configurada"))) {
+                                feedbackDiv.textContent += ' Por favor, configure sua API Key no backend.';
+                                // Opcional: Abrir o modal de info da API Key automaticamente
+                                // apiKeyInfoModal.style.display = 'flex';
+                            }
+
                         } else {
                             // Processa a resposta de sucesso do backend
                             console.log("Resposta do Backend:", result);
@@ -634,21 +673,36 @@
         });
 
 
-        // --- Lógica do Modal "Sobre" ---
-        // Event listener para abrir o modal
+        // --- Lógica dos Modais ---
+
+        // Event listener para abrir o modal "Sobre"
         aboutBtn.addEventListener('click', () => {
             aboutModal.style.display = 'flex'; // Usa flex para centralizar o conteúdo
         });
 
-        // Event listener para fechar o modal clicando no X
+        // Event listener para fechar o modal "Sobre" clicando no X
         closeModalBtn.addEventListener('click', () => {
             aboutModal.style.display = 'none';
         });
 
-        // Event listener para fechar o modal clicando fora dele
+         // Event listener para abrir o modal "API Key Info"
+         apiKeyInfoBtn.addEventListener('click', () => {
+             apiKeyInfoModal.style.display = 'flex'; // Usa flex para centralizar o conteúdo
+         });
+
+         // Event listener para fechar o modal "API Key Info" clicando no X
+         closeApiKeyModalBtn.addEventListener('click', () => {
+             apiKeyInfoModal.style.display = 'none';
+         });
+
+
+        // Event listener global para fechar modais clicando fora deles
         window.addEventListener('click', (event) => {
             if (event.target === aboutModal) {
                 aboutModal.style.display = 'none';
+            }
+            if (event.target === apiKeyInfoModal) {
+                 apiKeyInfoModal.style.display = 'none';
             }
         });
 
