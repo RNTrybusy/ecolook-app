@@ -87,7 +87,7 @@ def osm_overpass_search_tool(query: str, location: dict) -> List[Dict[str, Any]]
     print(f"Chamando a Overpass API para buscar: Query='{query}', Localização='{location}'")
 
     overpass_url = "http://overpass-api.de/api/interpreter"
-    radius_meters = 5000 # Raio de busca em metros (ex: 5km). Ajuste conforme necessário.
+    radius_meters = 10000 # Raio de busca em metros (ex: 10km). Ajuste conforme necessário.
     lat = location['lat']
     lng = location['lng']
 
@@ -315,22 +315,49 @@ async def analyze_and_find_stores_endpoint(
         # 3. Busca de Lojas Próximas (Usando a Overpass API)
         # A query para a ferramenta agora é mais específica com base na peça identificada.
         # Usamos a peça identificada para tentar refinar a busca no OSM, embora a precisão dependa das tags no OSM.
-        search_term_for_osm = "brechó" # Termo base para busca no OSM
-        clothing_lower = identified_clothing.lower()
-        if "roupa" in clothing_lower or "vestuário" in clothing_lower or "moda" in clothing_lower:
-             search_term_for_osm = "roupa sustentável" # Tenta refinar se a identificação for genérica
-        elif "jeans" in clothing_lower:
-             search_term_for_osm = "brechó jeans" # Tenta refinar para jeans
-        # Adicione mais lógica aqui para refinar search_term_for_osm com base em outras peças
+        clothing_term_map = {
+            "short": "loja moda sustentável brechó short",
+            "jeans": "loja moda sustentável brechó jeans",
+            "boné": "loja moda sustentável brechó boné",
+            "chapéu": "loja moda sustentável brechó chapéu",
+            "blusa": "loja moda sustentável brechó blusa",
+            "camisa": "loja moda sustentável brechó camisa",
+            "sapato": "loja moda sustentável brechó sapato",
+            "botas": "loja moda sustentável brechó botas",
+            "vestido": "loja moda sustentável brechó vestido",
+            "jaqueta": "loja moda sustentável brechó jaqueta",
+            "casaco": "loja moda sustentável brechó casaco",
+            "blazer": "loja moda sustentável brechó blazer",
+            "bolsa": "loja moda sustentável brechó bolsa",
+            "mochila": "loja moda sustentável brechó mochila",
+            "acessório": "loja moda sustentável brechó acessório",
+            "calça": "loja moda sustentável brechó calça",
+            "calcinha": "loja moda sustentável brechó calcinha",
+            "cueca": "loja moda sustentável brechó cueca"
+        }
 
+        # Termo padrão
+        default_search_term = "loja moda sustentável brechó"
+
+        # Normaliza o texto
+        clothing_lower = identified_clothing.lower()
+
+        # Busca o termo de pesquisa com base nas palavras encontradas
+        search_term_for_osm = next(
+            (term for key, term in clothing_term_map.items() if key in clothing_lower),
+            default_search_term
+        )
+
+        # Busca as lojas com base no termo final
         nearby_stores = osm_overpass_search_tool(query=search_term_for_osm, location=user_location_data)
 
-        # Retorna os resultados para o frontend em formato JSON
+        # Monta a resposta final
         return {
             "identifiedClothing": identified_clothing,
             "sustainableSuggestion": sustainable_suggestion,
-            "nearbyStores": nearby_stores # Retorna os dados obtidos da Overpass API
+            "nearbyStores": nearby_stores
         }
+
 
     except HTTPException as e:
         raise e
