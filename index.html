@@ -260,7 +260,10 @@
 
         <button id="capture-btn" aria-label="Escanear Roupa">Escanear Roupa</button>
         <button id="scan-another-btn" style="display: none;" aria-label="Escanear Outra Roupa">Escanear Outra Roupa</button>
-         <button id="clear-results-btn" aria-label="Limpar Resultados">Limpar Resultados</button> <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
+         <button id="clear-results-btn" aria-label="Limpar Resultados">Limpar Resultados</button>
+
+
+        <button id="about-btn" aria-label="Sobre o aplicativo">?</button>
 
         <div id="feedback" role="status" aria-live="polite"></div>
 
@@ -268,7 +271,8 @@
             <h3>Resultados</h3>
             <p id="sustainable-suggestion"></p>
             <h3 class="mt-4">Lojas Próximas:</h3>
-             <p class="mock-data-indicator">(Dados simulados para MVP)</p> <ul id="nearby-stores-list">
+             <p class="mock-data-indicator">(Dados simulados para MVP)</p>
+            <ul id="nearby-stores-list">
                 </ul>
         </div>
     </div>
@@ -479,17 +483,21 @@
                             const sustainableSuggestion = result.sustainableSuggestion;
                             const nearbyStores = result.nearbyStores; // Recebe os dados mock do backend
 
+                            // Atualiza feedback com análise e sugestão
                             feedbackDiv.textContent = `Identificado: ${identifiedClothing}. Sugestão: ${sustainableSuggestion}`;
                             sustainableSuggestionP.textContent = sustainableSuggestion; // Exibe a sugestão na área de resultados
 
+                            // Adiciona um pequeno delay antes de mostrar a busca de lojas
+                            await new Promise(resolve => setTimeout(resolve, 1500)); // Pausa de 1.5 segundos
+
                             // Atualiza o feedback para indicar a busca de lojas (mesmo que mock)
-                            feedbackDiv.textContent += ' Buscando lojas próximas...';
+                            feedbackDiv.textContent = 'Buscando lojas próximas... (dados simulados)';
 
 
                             // Simula um pequeno delay antes de exibir os resultados das lojas (para dar tempo de ler a sugestão)
                             await new Promise(resolve => setTimeout(resolve, 1000));
 
-                            feedbackDiv.textContent = 'Resultados encontrados (dados simulados):'; // Indicando que são dados mock
+                            feedbackDiv.textContent = 'Resultados encontrados:'; // Feedback final antes de exibir a lista
                             resultsDiv.style.display = 'block';
                             displayNearbyStores(nearbyStores);
                         }
